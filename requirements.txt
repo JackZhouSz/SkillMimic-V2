@@ -1,0 +1,2 @@
+six
+pytorch-lightning==1.9.0

@@ -1,0 +1,14 @@
+<?xml version="1.0" ?>
+<robot name="book_no_collision">
+  <link name="baseLink">
+    <visual>
+      <origin rpy="0 0 0" xyz="0 0 0"/>
+      <geometry>
+        <mesh filename="book.obj" scale="1 1 1"/>
+      </geometry>
+      <material name="yellow">
+        <color rgba="1 1 0 1"/>
+      </material>
+    </visual>
+  </link>
+</robot>

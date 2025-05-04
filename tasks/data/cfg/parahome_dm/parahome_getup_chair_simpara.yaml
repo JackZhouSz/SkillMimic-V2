@@ -1,0 +1,75 @@
+# if given, will override the device setting in gym. 
+env: 
+  numEnvs: 2048
+  envSpacing: 2 #0
+  episodeLength: 0
+  isFlagrun: False
+  enableDebugVis: False
+  playdataset: False
+  projtype: "None"
+  saveImages: "" #False
+  initVel: False
+  
+  pdControl: True
+  powerScale: 1.0
+  controlFrequencyInv: 1 # 30 fps
+  stateInit: "Random" # 2 # 
+  hybridInitProb: 0.5
+  dataFPS: 30 # 30 fps
+  dataFramesScale: 1. # 30 fps
+  ballSize: 1.
+  ballRestitution: 0 # 0.81
+  ballDensity: 2500.
+  
+  localRootObs: False
+  keyBodies: ["jC1Head", "jLeftKnee", "jRightKnee", "jLeftElbow", "jRightElbow", "jLeftAnkle", "jRightAnkle", "jLeftIP", "jLeftSecondDIP", "jLeftThirdDIP", "jLeftFourthDIP","jLeftFifthDIP","jRightIP", "jRightSecondDIP", "jRightThirdDIP", "jRightFourthDIP","jRightFifthDIP"]
+  contactBodies: ["jLeftIP", "jLeftSecondDIP", "jLeftThirdDIP", "jLeftFourthDIP","jLeftFifthDIP","jRightIP", "jRightSecondDIP", "jRightThirdDIP", "jRightFourthDIP","jRightFifthDIP"]
+  terminationHeight: 0.25
+  enableEarlyTermination: True #False #True
+
+  asset:
+    assetRoot: "skillmimic/data/assets" #projectname
+    assetFileName: "mjcf/mocap_parahome_boxhand.xml" #"mjcf/mocap_humanoid_boxhand.xml"
+
+  plane:
+    staticFriction: 1.0
+    dynamicFriction: 1.0
+    restitution: 0.8 #1.6 #0.99 #0. #1.6
+  
+  rewardWeights:
+    p: 40.
+    r: 2.
+    pv: 0.
+    rv: 0.1
+
+    op: 40.
+    or: 0.
+    opv: 0.
+    orv: 0.
+
+    ig: 0.
+
+    cg1: 0.
+    cg2: 0.
+
+  enableTaskObs: False #ZC0
+  state_init_random_prob: 0
+  in_scene_obj_static: ['desk']
+  in_scene_obj_dynamic: ['chair']
+
+sim:
+  substeps: 2 #ZC
+  physx:
+    num_threads: 4
+    solver_type: 1  # 0: pgs, 1: tgs
+    num_position_iterations: 10
+    num_velocity_iterations: 0
+    contact_offset: 0.02
+    rest_offset: 0.0
+    bounce_threshold_velocity: 0.2
+    max_depenetration_velocity: 10.0
+    default_buffer_size_multiplier: 10.0
+  
+  flex:
+    num_inner_iterations: 10
+    warm_start: 0.25

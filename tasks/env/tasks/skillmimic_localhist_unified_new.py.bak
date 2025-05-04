@@ -1,0 +1,1038 @@
+from enum import Enum
+import torch.nn.functional as F
+import numpy as np
+import torch
+import pickle
+from typing import Dict
+from torch import Tensor
+from typing import Tuple
+import glob, os, random
+from isaacgym import gymtorch
+from isaacgym import gymapi
+from isaacgym.torch_utils import *
+from datetime import datetime
+
+from utils import torch_utils
+from utils.motion_data_handler import MotionDataHandler
+from utils.history_encoder import HistoryEncoder
+
+from env.tasks.humanoid_object_task import HumanoidWholeBodyWithObject
+
+
+class SkillMimicBallPlayLocalHistUnifiedNew(HumanoidWholeBodyWithObject): 
+    def __init__(self, cfg, sim_params, physics_engine, device_type, device_id, headless):
+        state_init = str(cfg["env"]["stateInit"])
+        if state_init.lower() == "random":
+            self._state_init = -1
+            print("Random Reference State Init (RRSI)")
+        else:
+            self._state_init = int(state_init)
+            print(f"Deterministic Reference State Init from {self._state_init}")
+
+        self.motion_file = cfg['env']['motion_file']
+        self.switch_motion_file = cfg['env']['switch_motion_file'] if 'switch_motion_file' in cfg['env'] else None
+        self.play_dataset = cfg['env']['playdataset']
+        self.robot_type = cfg["env"]["asset"]["assetFileName"]
+        self.reward_weights_default = cfg["env"]["rewardWeights"]
+        self.save_images = cfg['env']['saveImages']
+        self.save_images_timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        self.init_vel = cfg['env']['initVel']
+        self.isTest = cfg['args'].test
+        self.local_reward = cfg['env']['localReward']
+
+        self.condition_size = 64
+
+        super().__init__(cfg=cfg,
+                         sim_params=sim_params,
+                         physics_engine=physics_engine,
+                         device_type=device_type,
+                         device_id=device_id,
+                         headless=headless)
+        
+        ######### Modified by Runyi #########
+        self.skill_labels = torch.zeros(self.num_envs, device=self.device, dtype=torch.long)
+        self.state_switch_flags = torch.zeros(self.num_envs, device=self.device, dtype=torch.long)
+        self.ref_hoi_obs_size = 6 + self._dof_obs_size*2 + 10 + len(self.cfg["env"]["keyBodies"])*3 + 1
+        self.ref_hoi_data_size = 1 + self._dof_obs_size*2 + 3
+        
+        self.weights = {'root_pos': 1,'root_pos_vel': 1,'root_rot_3d': 1,'root_rot_vel': 1,'dof_pos': 0.25, 'dof_pos_vel': 1,'obj_pos': 2,'obj_pos_vel': 2,'obj_rot': 1,'obj_rot_vel': 1}
+        if 'stateSearchGraph' in cfg['env']:
+            with open(f"{cfg['env']['stateSearchGraph']}", "rb") as f:
+                self.state_search_graph = pickle.load(f)
+
+        self.history_length = cfg['env']['historyLength']
+        self._hist_obs_batch = torch.zeros([self.num_envs, self.history_length, self.ref_hoi_data_size], device=self.device, dtype=torch.float)
+        self.hist_encoder = HistoryEncoder(self.history_length, input_dim=316).to(self.device)
+        self.hist_encoder.eval()
+        self.hist_encoder.resume_from_checkpoint(cfg["env"]["histEncoderCkpt"])
+        for param in self.hist_encoder.parameters():
+            param.requires_grad = False
+        #####################################
+        
+        self._load_motion(self.motion_file, self.switch_motion_file) #ZC1
+
+        self._curr_ref_obs = torch.zeros((self.num_envs, self.ref_hoi_obs_size), device=self.device, dtype=torch.float)
+        self._hist_ref_obs = torch.zeros((self.num_envs, self.ref_hoi_obs_size), device=self.device, dtype=torch.float)
+        self._curr_obs = torch.zeros((self.num_envs, self.ref_hoi_obs_size), device=self.device, dtype=torch.float)
+        self._hist_obs = torch.zeros((self.num_envs, self.ref_hoi_obs_size), device=self.device, dtype=torch.float)
+        self._tar_pos = torch.zeros([self.num_envs, 3], device=self.device, dtype=torch.float)
+        
+        # get the label of the skill
+        # skill_number = int(os.listdir(self.motion_file)[0].split('_')[0])
+        # self.hoi_data_label_batch = F.one_hot(torch.tensor(skill_number), num_classes=self.condition_size).repeat(self.num_envs,1).to(self.device)
+        self.hoi_data_label_batch = torch.zeros([self.num_envs, self.condition_size], device=self.device, dtype=torch.float)
+
+        self._subscribe_events_for_change_condition()
+
+        self.envid2motid = torch.zeros(self.num_envs, device=self.device, dtype=torch.long) #{}
+        # self.envid2episode_lengths = torch.zeros(self.num_envs, device=self.device, dtype=torch.long)
+
+        self.show_motion_test = False
+        # self.init_from_frame_test = 0 #2 #ZC3
+        self.motion_id_test = 0
+        # self.options = [i for i in range(6) if i != 2]
+        self.succ_pos = []
+        self.fail_pos = []
+        self.reached_target = torch.zeros(self.num_envs, device=self.device, dtype=torch.int) #metric torch.bool
+
+        self.show_abnorm = [0] * self.num_envs #V1
+
+        return
+
+    def post_physics_step(self):
+        self._update_condition()
+        
+        # extra calc of self._curr_obs, for imitation reward
+        self._compute_hoi_observations()
+
+        super().post_physics_step()
+
+        # self._compute_hoi_observations()
+        self._update_hist_hoi_obs()
+
+        return
+
+    def _update_hist_hoi_obs(self, env_ids=None):
+        self._hist_obs = self._curr_obs.clone()
+        return
+    
+    def get_obs_size(self):
+        obs_size = super().get_obs_size()
+        
+        obs_size += self.condition_size
+        return obs_size
+
+    def get_task_obs_size(self):
+        return 0
+    
+    def _compute_observations(self, env_ids=None): # called @ reset & post step
+        obs = None
+        humanoid_obs = self._compute_humanoid_obs(env_ids)
+        obs = humanoid_obs
+
+        obj_obs = self._compute_obj_obs(env_ids)
+        obs = torch.cat([obs, obj_obs], dim=-1)
+
+        if self._enable_task_obs:
+            task_obs = self.compute_task_obs(env_ids)
+            obs = torch.cat([obs, task_obs], dim = -1)
+        
+        ######### Modified by Runyi #########
+        if (env_ids is None):
+            env_ids = torch.arange(self.num_envs)
+
+        textemb_batch = self.hoi_data_label_batch[env_ids]
+        obs = torch.cat((obs, textemb_batch),dim=-1)
+        ts = self.progress_buf[env_ids].clone()
+        self._curr_ref_obs[env_ids] = self.hoi_data_batch[env_ids,ts].clone()
+        
+        hist_vector = self.hist_encoder(self._hist_obs_batch[env_ids])
+        obs = torch.cat([obs, hist_vector], dim=-1)
+
+        self.obs_buf[env_ids] = obs
+
+        # [0, 1, 2, a, b, c, d] -> [1, 2, a, b, c, d, currect_obs]
+        current_obs = torch.cat([humanoid_obs[..., :157],  self._dof_pos[env_ids], obj_obs[..., :3]], dim=-1) # (envs, 316)
+        self._hist_obs_batch[env_ids] = torch.cat([self._hist_obs_batch[env_ids, 1:], current_obs.unsqueeze(1)], dim=1)
+        #####################################
+
+        return
+
+    def _compute_reset(self):
+        self.reset_buf[:], self._terminate_buf[:] = compute_humanoid_reset(self.reset_buf, self.progress_buf,
+                                                   self._contact_forces,
+                                                   self._rigid_body_pos, self.max_episode_length,
+                                                   self._enable_early_termination, self._termination_heights, 
+                                                   self._curr_ref_obs, self._curr_obs, self._motion_data.envid2episode_lengths,
+                                                   self.isTest, self.cfg["env"]["episodeLength"],
+                                                   self.skill_labels,
+                                                   )
+        return
+    
+    def _compute_reward(self):
+        self.rew_buf[:] = compute_humanoid_reward(self._curr_ref_obs, self._curr_obs, self._hist_obs, self._contact_forces, 
+                                                self._tar_contact_forces, len(self._key_body_ids), self._motion_data.reward_weights, 
+                                                self.skill_labels)
+        
+        
+        ######### Modified by Runyi #########
+        if self.isTest:
+            skill_name = self.skill_name if self.switch_skill_name is None else self.switch_skill_name
+
+            ball_pos = self._target_states[..., 0:3]
+            root_pos = self._humanoid_root_states[..., 0:3]
+            if skill_name == 'pickup':
+                distance_ball2targ = torch.abs(ball_pos[..., 2] - 1.0)
+                distance_ball2root = torch.norm(ball_pos - root_pos, dim=-1)
+                at_target = (root_pos[:, 2] > 0.3) & (distance_ball2targ < 0.25) & (ball_pos[..., 2] > 1.0) & (distance_ball2root < 0.45)
+                self.reached_target = self.reached_target | at_target
+            elif skill_name == 'layup':
+                distance_ball2targ = torch.abs(ball_pos[..., 2] - self.layup_target[2])
+                at_target = (root_pos[:, 2] > 0.5) & (distance_ball2targ < 0.2)
+                self.reached_target = self.reached_target | at_target
+            else:
+                distance_ball2root = torch.norm(ball_pos - root_pos, dim=-1)
+                at_target = (root_pos[:, 2] > 0.5) & (distance_ball2root < 1.5)
+                if self.progress_buf[0] == 1:
+                    self.reached_target = self.reached_target | at_target
+                else:
+                    self.reached_target = self.reached_target & at_target
+            
+        #####################################
+
+        return
+    
+    
+    def _load_motion(self, motion_file, switch_motion_file):
+        self.skill_name = motion_file.split('/')[-1] #metric
+        self.max_episode_length = 60
+        if self.cfg["env"]["episodeLength"] > 0:
+            self.max_episode_length =  self.cfg["env"]["episodeLength"]
+
+        self._motion_data = MotionDataHandler(motion_file, self.device, self._key_body_ids, self.cfg, self.num_envs, 
+                                            self.max_episode_length, self.reward_weights_default, self.init_vel, self.play_dataset)
+        
+        if self.play_dataset:
+            self.max_episode_length = self._motion_data.max_episode_length
+        self.hoi_data_batch = torch.zeros([self.num_envs, self.max_episode_length, self.ref_hoi_obs_size], device=self.device, dtype=torch.float)
+        
+        ######### Modified by Runyi #########
+        self.switch_skill_name = os.path.basename(switch_motion_file) if switch_motion_file is not None else None
+        if switch_motion_file is not None:
+            self._motion_data_switch = MotionDataHandler(switch_motion_file, self.device, self._key_body_ids, self.cfg,
+                                                         self.num_envs, self.max_episode_length, self.reward_weights_default, self.init_vel, self.play_dataset)
+        if self.skill_name == 'layup' and self.isTest:
+            layup_target_ind = torch.argmax(self._motion_data.hoi_data_dict[0]['obj_pos'][:,2])
+            self.layup_target = self._motion_data.hoi_data_dict[0]['obj_pos'][layup_target_ind]
+        elif self.switch_skill_name == 'layup':
+            layup_target_ind = torch.argmax(self._motion_data_switch.hoi_data_dict[0]['obj_pos'][:,2])
+            self.layup_target = self._motion_data_switch.hoi_data_dict[0]['obj_pos'][layup_target_ind]
+        #####################################
+
+        return
+    
+
+
+    def _subscribe_events_for_change_condition(self):
+        self.gym.subscribe_viewer_keyboard_event(self.viewer, gymapi.KEY_LEFT, "011") # dribble left
+        self.gym.subscribe_viewer_keyboard_event(self.viewer, gymapi.KEY_RIGHT, "012") # dribble right
+        self.gym.subscribe_viewer_keyboard_event(self.viewer, gymapi.KEY_UP, "013") # dribble forward
+        self.gym.subscribe_viewer_keyboard_event(self.viewer, gymapi.KEY_Q, "001") # pick up
+        self.gym.subscribe_viewer_keyboard_event(self.viewer, gymapi.KEY_W, "009") # shot
+        self.gym.subscribe_viewer_keyboard_event(self.viewer, gymapi.KEY_E, "031") # layup
+        self.gym.subscribe_viewer_keyboard_event(self.viewer, gymapi.KEY_X, "032") #
+        self.gym.subscribe_viewer_keyboard_event(self.viewer, gymapi.KEY_C, "033") #
+        self.gym.subscribe_viewer_keyboard_event(self.viewer, gymapi.KEY_R, "034") # turnaround layup
+        self.gym.subscribe_viewer_keyboard_event(self.viewer, gymapi.KEY_B, "035") #
+        
+        return
+    
+
+    def _reset_envs(self, env_ids):
+        if(len(env_ids)>0): #metric
+            self.reached_target[env_ids] = False
+        
+        super()._reset_envs(env_ids)
+
+        return
+
+    def _reset_actors(self, env_ids):
+        if self._state_init == -1:
+            self.motion_ids, self.motion_times, state_switch_flags = self._reset_random_ref_state_init(env_ids) #V1 Random Ref State Init (RRSI)
+        elif self._state_init >= 2:
+            self.motion_ids, self.motion_times, state_switch_flags = self._reset_deterministic_ref_state_init(env_ids)
+        else:
+            assert(False), f"Unsupported state initialization from: {self._state_init}"
+
+        ######### Modified by Runyi #########
+        # pt data (337 dim): root_pos(3) + root_rot(3) + root_rot(3) + dof_pos(52*3) + body_pos(53*3) 
+        #                   + obj_pos(3) + zero_obj_rot(3) + zero_obj_pos_vel(3) + zero_obj_rot_vel(3) + contact_graph(1)
+        # initialize the history observation
+        self._hist_obs_batch[env_ids] = torch.zeros([env_ids.shape[0], self.history_length, self.ref_hoi_data_size], device=self.device, dtype=torch.float)
+        for ind in range(env_ids.shape[0]):
+            env_id = env_ids[ind]
+            ref_data = self._motion_data.hoi_data_dict[int(self.motion_ids[ind])]
+            humanoid_obs = get_humanoid_obs(ref_data['root_pos'], ref_data['root_rot_3d'], ref_data['body_pos'])
+            obj_obs = get_obj_obs(ref_data['root_pos'], ref_data['root_rot_3d'], ref_data['obj_pos'])
+            ref_data_obs = torch.cat([humanoid_obs, ref_data['dof_pos'].view(-1, 52*3), obj_obs], dim=-1)
+            start_frame = self.motion_times[ind] - self.history_length
+            end_frame = self.motion_times[ind]
+            if start_frame >= 0:
+                self._hist_obs_batch[env_id] = ref_data_obs[start_frame:end_frame]
+            else:
+                self._hist_obs_batch[env_id, -end_frame:] = ref_data_obs[:end_frame]
+        self.skill_labels[env_ids] = torch.tensor(self._motion_data.motion_class[self.motion_ids], device=self.device, dtype=torch.long)
+        self.state_switch_flags[env_ids] = torch.tensor(state_switch_flags, dtype=torch.long, device=self.device)
+        #####################################
+        super()._reset_actors(env_ids)
+        return
+
+    def _reset_humanoid(self, env_ids):
+        self._humanoid_root_states[env_ids, 0:3] = self.init_root_pos[env_ids]
+        self._humanoid_root_states[env_ids, 3:7] = self.init_root_rot[env_ids]
+        self._humanoid_root_states[env_ids, 7:10] = self.init_root_pos_vel[env_ids]
+        self._humanoid_root_states[env_ids, 10:13] = self.init_root_rot_vel[env_ids]
+        
+        self._dof_pos[env_ids] = self.init_dof_pos[env_ids]
+        self._dof_vel[env_ids] = self.init_dof_pos_vel[env_ids]
+        return
+
+    # ######## Modified by Runyi #########
+    # def _reset_target(self, env_ids):
+    #     super()._reset_target(env_ids)
+    #     if self.isTest and self.skill_name == 'pickup':
+    #         self._target_states[env_ids, :2] = self.init_root_pos[env_ids, :2] + torch.rand(len(env_ids),2).to("cuda")*6 - 3
+    #         self._target_states[env_ids, 2] = 0.1
+    #         self._target_states[env_ids, 3:7] = torch.tensor([0, 0, 0, 1], device=self.device, dtype=torch.float)
+    # ####################################
+
+    def _reset_random_ref_state_init(self, env_ids): #Z11
+        num_envs = env_ids.shape[0]
+
+        # print(self._motion_data.motion_class)
+        # for i in range(6):
+        #     print(self._motion_data.hoi_data_dict[i]['obj_pos'][0])
+        # exit()
+
+        motion_ids = self._motion_data.sample_motions(num_envs)
+        motion_times = self._motion_data.sample_time(motion_ids)
+        skill_label = self._motion_data.motion_class[motion_ids.tolist()]
+        self.hoi_data_label_batch[env_ids] = F.one_hot(torch.tensor(skill_label, device=self.device), num_classes=self.condition_size).float()
+
+        self.hoi_data_batch[env_ids], \
+        self.init_root_pos[env_ids], self.init_root_rot[env_ids],  self.init_root_pos_vel[env_ids], self.init_root_rot_vel[env_ids], \
+        self.init_dof_pos[env_ids], self.init_dof_pos_vel[env_ids], \
+        self.init_obj_pos[env_ids], self.init_obj_pos_vel[env_ids], self.init_obj_rot[env_ids], self.init_obj_rot_vel[env_ids] \
+            = self._motion_data.get_initial_state(env_ids, motion_ids, motion_times)
+
+        ######################## Modified by Runyi ########################
+        # Random noise for initial state
+        state_random_flags = [np.random.rand() < self.cfg['env']['state_init_random_prob'] for _ in env_ids]
+        if self.cfg['env']['state_init_random_prob'] > 0:
+            for ind, env_id in enumerate(env_ids):
+                if state_random_flags[ind]:
+                    noise_weight = [0.1 for _ in range(10)] if skill_label[ind] != 0 else [1.0, 1.0] + [0.1 for _ in range(8)]
+                    self.init_root_pos[env_id, 2] += random.random() * noise_weight[0]
+                    self.init_root_rot[env_id] += torch.randn_like(self.init_root_rot[env_id]) * noise_weight[1]
+                    self.init_root_pos_vel[env_id] += torch.randn_like(self.init_root_pos_vel[env_id]) * noise_weight[2]
+                    self.init_root_rot_vel[env_id] += torch.randn_like(self.init_root_rot_vel[env_id]) * noise_weight[3]
+                    self.init_dof_pos[env_id] += torch.randn_like(self.init_dof_pos[env_id]) * noise_weight[4]
+                    self.init_dof_pos_vel[env_id]  += torch.randn_like(self.init_dof_pos_vel[env_id]) * noise_weight[5]
+                    self.init_obj_pos[env_id, 2] += random.random() * noise_weight[6]
+                    self.init_obj_pos_vel[env_id] += torch.randn_like(self.init_obj_pos_vel[env_id]) * noise_weight[7]
+                    self.init_obj_rot[env_id] += torch.randn_like(self.init_obj_rot[env_id]) * noise_weight[8]
+                    self.init_obj_rot_vel[env_id] += torch.randn_like(self.init_obj_rot_vel[env_id]) * noise_weight[9]
+                    noisy_motion = {
+                        'root_pos': self.init_root_pos[env_id],
+                        'root_rot_3d': self.init_root_rot[env_id],
+                        'root_pos_vel': self.init_root_pos_vel[env_id],
+                        'root_rot_vel': self.init_root_rot_vel[env_id],
+                        'dof_pos': self.init_dof_pos[env_id],
+                        'dof_pos_vel': self.init_dof_pos_vel[env_id],
+                        'obj_pos': self.init_obj_pos[env_id],
+                        'obj_pos_vel': self.init_obj_pos_vel[env_id],
+                        'obj_rot': self.init_obj_rot[env_id],
+                        'obj_rot_vel': self.init_obj_rot_vel[env_id],
+                    }
+
+                    motion_id = motion_ids[ind:ind+1]
+                    new_source_motion_time = self._motion_data.noisy_resample_time(noisy_motion, motion_id, weights=self.weights)
+                    motion_times[ind:ind+1] = new_source_motion_time
+                    # resample the hoi_data_batch
+                    self.hoi_data_batch[env_id], _, _, _, _, _, _, _, _, _, _ \
+                        = self._motion_data.get_initial_state(env_ids[ind:ind+1], motion_id, new_source_motion_time)
+                    if self.isTest:
+                        print(f"Random noise added to initial state for env {env_id}")
+        
+
+        # # Random init from other skills
+        # state_switch_flags = [np.random.rand() < self.cfg['env']['state_switch_prob'] for _ in env_ids]
+        # if self.cfg['env']['state_switch_prob'] > 0:
+        #     # getup skill don't need switch
+        #     getup_index = np.where(skill_label==0)[0]
+        #     state_switch_flags = [state_switch_flags[i] if i not in getup_index else False for i in range(len(state_switch_flags))]
+        #     for ind, env_id in enumerate(env_ids):
+        #         if state_switch_flags[ind] and not state_random_flags[ind]:
+        #             source_motion_id = motion_ids[ind:ind+1]
+        #             switch_motion_id = self._motion_data.sample_switch_motions(source_motion_id)
+        #             switch_motion_time, new_source_motion_time = self._motion_data.resample_time(source_motion_id, switch_motion_id, weights=self.weights)
+        #             motion_times[ind:ind+1] = new_source_motion_time
+
+        #             # state_switch changes the root and object states (with root x,y position unchanged)
+        #             _, self.init_root_pos[env_id], self.init_root_rot[env_id],  self.init_root_pos_vel[env_id], self.init_root_rot_vel[env_id], \
+        #             self.init_dof_pos[env_id], self.init_dof_pos_vel[env_id], \
+        #             self.init_obj_pos[env_id], self.init_obj_pos_vel[env_id], self.init_obj_rot[env_id], self.init_obj_rot_vel[env_id] \
+        #                 = self._motion_data.get_initial_state(env_ids[ind:ind+1], switch_motion_id, switch_motion_time)
+
+        #             # resample the hoi_data_batch
+        #             self.hoi_data_batch[env_id], _, _,  _, _, _, _, _, _, _, _ = \
+        #                 self._motion_data.get_initial_state(env_ids[ind:ind+1], source_motion_id, new_source_motion_time)
+        #             self.hoi_data_batch[env_id] = compute_local_hoi_data(self.hoi_data_batch[env_id], self.init_root_pos[env_id], 
+        #                                                                  self.init_root_rot[env_id], len(self._key_body_ids))
+                    
+        #             if self.isTest:
+        #                 print(f"Switched from skill {motion_times[ind]} to {switch_motion_id} for env {env_id}")
+
+        # Random init to other skills
+        state_switch_flags = [np.random.rand() < self.cfg['env']['state_switch_prob'] for _ in env_ids]
+        if self.cfg['env']['state_switch_prob'] > 0:
+            # # # getup skill can't switch to other skills
+            # getup_index = np.where(skill_label==0)[0]
+            # state_switch_flags = [state_switch_flags[i] if i not in getup_index else False for i in range(len(state_switch_flags))]
+            for ind, env_id in enumerate(env_ids):
+                if state_switch_flags[ind] and not state_random_flags[ind]:
+                    switch_motion_class = self._motion_data.motion_class[motion_ids[ind]]
+                    switch_motion_id = motion_ids[ind:ind+1]
+                    switch_motion_time = motion_times[ind:ind+1]
+
+                    # load source motion info from state_search_graph
+                    source_motion_class, source_motion_id, source_motion_time = random.choice(self.state_search_graph[switch_motion_class][switch_motion_id.item()][switch_motion_time.item()])
+                    if source_motion_id is None and source_motion_time is None:
+                        # print(f"Switch from time {switch_motion_time.item()} of {switch_motion_id.item()} failed")
+                        continue
+                    source_motion_id = torch.tensor([source_motion_id], device=self.device)
+                    source_motion_time = torch.tensor([source_motion_time], device=self.device)
+                    
+                    # state_switch changes the root and object states
+                    _, self.init_root_pos[env_id], self.init_root_rot[env_id],  self.init_root_pos_vel[env_id], self.init_root_rot_vel[env_id], \
+                    self.init_dof_pos[env_id], self.init_dof_pos_vel[env_id], \
+                    self.init_obj_pos[env_id], self.init_obj_pos_vel[env_id], self.init_obj_rot[env_id], self.init_obj_rot_vel[env_id] \
+                        = self._motion_data.get_initial_state(env_ids[ind:ind+1], switch_motion_id, switch_motion_time)
+
+                    # resample the hoi_data_batch
+                    self.hoi_data_batch[env_id], _, _,  _, _, _, _, _, _, _, _ = \
+                        self._motion_data.get_initial_state(env_ids[ind:ind+1], source_motion_id, source_motion_time)
+                    self.hoi_data_batch[env_id] = compute_local_hoi_data(self.hoi_data_batch[env_id], self.init_root_pos[env_id], 
+                                                                         self.init_root_rot[env_id], len(self._key_body_ids))
+                    
+                    # change skill label
+                    skill_label = self._motion_data.motion_class[source_motion_id.tolist()]
+                    self.hoi_data_label_batch[env_id] = F.one_hot(torch.tensor(skill_label, device=self.device), num_classes=self.condition_size).float()
+                    
+                    if self.isTest:
+                        print(f"Switched from skill {switch_motion_class} to {source_motion_class} for env {env_id}")
+        ####################################################################
+
+        return motion_ids, motion_times, state_switch_flags
+    
+    def _reset_deterministic_ref_state_init(self, env_ids):
+        num_envs = env_ids.shape[0]
+
+        motion_ids = self._motion_data.sample_motions(num_envs)
+        motion_times = self._motion_data.sample_time(motion_ids)
+        skill_label = self._motion_data.motion_class[motion_ids.tolist()]
+        self.hoi_data_label_batch[env_ids] = F.one_hot(torch.tensor(skill_label, device=self.device), num_classes=self.condition_size).float()
+
+        self.hoi_data_batch[env_ids], \
+        self.init_root_pos[env_ids], self.init_root_rot[env_ids],  self.init_root_pos_vel[env_ids], self.init_root_rot_vel[env_ids], \
+        self.init_dof_pos[env_ids], self.init_dof_pos_vel[env_ids], \
+        self.init_obj_pos[env_ids], self.init_obj_pos_vel[env_ids], self.init_obj_rot[env_ids], self.init_obj_rot_vel[env_ids] \
+            = self._motion_data.get_initial_state(env_ids, motion_ids, motion_times)
+
+        ######################## Modified by Runyi ########################
+        # Random noise for initial state
+        state_random_flags = [np.random.rand() < self.cfg['env']['state_init_random_prob'] for _ in env_ids]
+        if self.cfg['env']['state_init_random_prob'] > 0:
+            for ind, env_id in enumerate(env_ids):
+                if state_random_flags[ind]:
+                    noise_weight = [0.1 for _ in range(10)] if skill_label[ind] != 0 else [1.0, 1.0] + [0.1 for _ in range(8)]
+                    self.init_root_pos[env_id, 2] += random.random() * noise_weight[0]
+                    self.init_root_rot[env_id] += torch.randn_like(self.init_root_rot[env_id]) * noise_weight[1]
+                    self.init_root_pos_vel[env_id] += torch.randn_like(self.init_root_pos_vel[env_id]) * noise_weight[2]
+                    self.init_root_rot_vel[env_id] += torch.randn_like(self.init_root_rot_vel[env_id]) * noise_weight[3]
+                    self.init_dof_pos[env_id] += torch.randn_like(self.init_dof_pos[env_id]) * noise_weight[4]
+                    self.init_dof_pos_vel[env_id]  += torch.randn_like(self.init_dof_pos_vel[env_id]) * noise_weight[5]
+                    self.init_obj_pos[env_id, 2] += random.random() * noise_weight[6]
+                    self.init_obj_pos_vel[env_id] += torch.randn_like(self.init_obj_pos_vel[env_id]) * noise_weight[7]
+                    self.init_obj_rot[env_id] += torch.randn_like(self.init_obj_rot[env_id]) * noise_weight[8]
+                    self.init_obj_rot_vel[env_id] += torch.randn_like(self.init_obj_rot_vel[env_id]) * noise_weight[9]
+                    noisy_motion = {
+                        'root_pos': self.init_root_pos[env_id],
+                        'root_rot_3d': self.init_root_rot[env_id],
+                        'root_pos_vel': self.init_root_pos_vel[env_id],
+                        'root_rot_vel': self.init_root_rot_vel[env_id],
+                        'dof_pos': self.init_dof_pos[env_id],
+                        'dof_pos_vel': self.init_dof_pos_vel[env_id],
+                        'obj_pos': self.init_obj_pos[env_id],
+                        'obj_pos_vel': self.init_obj_pos_vel[env_id],
+                        'obj_rot': self.init_obj_rot[env_id],
+                        'obj_rot_vel': self.init_obj_rot_vel[env_id],
+                    }
+
+                    motion_id = motion_ids[ind:ind+1]
+                    new_source_motion_time = self._motion_data.noisy_resample_time(noisy_motion, motion_id, weights=self.weights)
+                    motion_times[ind:ind+1] = new_source_motion_time
+                    # resample the hoi_data_batch
+                    self.hoi_data_batch[env_id], _, _, _, _, _, _, _, _, _, _ \
+                        = self._motion_data.get_initial_state(env_ids[ind:ind+1], motion_id, new_source_motion_time)
+                    if self.isTest:
+                        print(f"Random noise added to initial state for env {env_id}")
+        
+
+        # # Random init from other skills
+        # state_switch_flags = [np.random.rand() < self.cfg['env']['state_switch_prob'] for _ in env_ids]
+        # if self.cfg['env']['state_switch_prob'] > 0:
+        #     # getup skill don't need switch
+        #     getup_index = np.where(skill_label==0)[0]
+        #     state_switch_flags = [state_switch_flags[i] if i not in getup_index else False for i in range(len(state_switch_flags))]
+        #     for ind, env_id in enumerate(env_ids):
+        #         if state_switch_flags[ind] and not state_random_flags[ind]:
+        #             source_motion_id = motion_ids[ind:ind+1]
+        #             switch_motion_id = self._motion_data.sample_switch_motions(source_motion_id)
+        #             switch_motion_time, new_source_motion_time = self._motion_data.resample_time(source_motion_id, switch_motion_id, weights=self.weights)
+        #             motion_times[ind:ind+1] = new_source_motion_time
+
+        #             # state_switch changes the root and object states (with root x,y position unchanged)
+        #             _, self.init_root_pos[env_id], self.init_root_rot[env_id],  self.init_root_pos_vel[env_id], self.init_root_rot_vel[env_id], \
+        #             self.init_dof_pos[env_id], self.init_dof_pos_vel[env_id], \
+        #             self.init_obj_pos[env_id], self.init_obj_pos_vel[env_id], self.init_obj_rot[env_id], self.init_obj_rot_vel[env_id] \
+        #                 = self._motion_data.get_initial_state(env_ids[ind:ind+1], switch_motion_id, switch_motion_time)
+
+        #             # resample the hoi_data_batch
+        #             self.hoi_data_batch[env_id], _, _,  _, _, _, _, _, _, _, _ = \
+        #                 self._motion_data.get_initial_state(env_ids[ind:ind+1], source_motion_id, new_source_motion_time)
+        #             self.hoi_data_batch[env_id] = compute_local_hoi_data(self.hoi_data_batch[env_id], self.init_root_pos[env_id], 
+        #                                                                  self.init_root_rot[env_id], len(self._key_body_ids))
+                    
+        #             if self.isTest:
+        #                 print(f"Switched from skill {motion_times[ind]} to {switch_motion_id} for env {env_id}")
+
+        # Random init to other skills
+        state_switch_flags = [np.random.rand() < self.cfg['env']['state_switch_prob'] for _ in env_ids]
+        if self.cfg['env']['state_switch_prob'] > 0:
+            # # getup skill can't switch to other skills
+            # getup_index = np.where(skill_label==0)[0]
+            # state_switch_flags = [state_switch_flags[i] if i not in getup_index else False for i in range(len(state_switch_flags))]
+            for ind, env_id in enumerate(env_ids):
+                if state_switch_flags[ind] and not state_random_flags[ind]:
+                    switch_motion_class = self._motion_data.motion_class[motion_ids[ind]]
+                    switch_motion_id = motion_ids[ind:ind+1]
+                    switch_motion_time = motion_times[ind:ind+1]
+
+                    # load source motion info from state_search_graph
+                    source_motion_class, source_motion_id, source_motion_time = random.choice(self.state_search_graph[switch_motion_class][switch_motion_id.item()][switch_motion_time.item()])
+                    if source_motion_id is None and source_motion_time is None:
+                        # print(f"Switch from time {switch_motion_time.item()} of {switch_motion_id.item()} failed")
+                        continue
+                    source_motion_id = torch.tensor([source_motion_id], device=self.device)
+                    source_motion_time = torch.tensor([source_motion_time], device=self.device)
+                    
+                    # state_switch changes the root and object states
+                    _, self.init_root_pos[env_id], self.init_root_rot[env_id],  self.init_root_pos_vel[env_id], self.init_root_rot_vel[env_id], \
+                    self.init_dof_pos[env_id], self.init_dof_pos_vel[env_id], \
+                    self.init_obj_pos[env_id], self.init_obj_pos_vel[env_id], self.init_obj_rot[env_id], self.init_obj_rot_vel[env_id] \
+                        = self._motion_data.get_initial_state(env_ids[ind:ind+1], switch_motion_id, switch_motion_time)
+
+                    # resample the hoi_data_batch
+                    self.hoi_data_batch[env_id], _, _,  _, _, _, _, _, _, _, _ = \
+                        self._motion_data.get_initial_state(env_ids[ind:ind+1], source_motion_id, source_motion_time)
+                    self.hoi_data_batch[env_id] = compute_local_hoi_data(self.hoi_data_batch[env_id], self.init_root_pos[env_id], 
+                                                                         self.init_root_rot[env_id], len(self._key_body_ids))
+                    
+                    # change skill label
+                    skill_label = self._motion_data.motion_class[source_motion_id.tolist()]
+                    self.hoi_data_label_batch[env_id] = F.one_hot(torch.tensor(skill_label, device=self.device), num_classes=self.condition_size).float()
+                    
+                    if self.isTest:
+                        print(f"Switched from skill {switch_motion_class} to {source_motion_class} for env {env_id}")
+        ####################################################################
+
+        return motion_ids, motion_times, state_switch_flags
+
+    def _compute_hoi_observations(self, env_ids=None):
+        key_body_pos = self._rigid_body_pos[:, self._key_body_ids, :]
+
+        if (env_ids is None):
+            self._curr_obs[:] = build_hoi_observations(self._rigid_body_pos[:, 0, :],
+                                                               self._rigid_body_rot[:, 0, :],
+                                                               self._rigid_body_vel[:, 0, :],
+                                                               self._rigid_body_ang_vel[:, 0, :],
+                                                               self._dof_pos, self._dof_vel, key_body_pos,
+                                                               self._local_root_obs, self._root_height_obs, 
+                                                               self._dof_obs_size, self._target_states,
+                                                               self._hist_obs,
+                                                               self.progress_buf)
+        else:
+            self._curr_obs[env_ids] = build_hoi_observations(self._rigid_body_pos[env_ids][:, 0, :],
+                                                                   self._rigid_body_rot[env_ids][:, 0, :],
+                                                                   self._rigid_body_vel[env_ids][:, 0, :],
+                                                                   self._rigid_body_ang_vel[env_ids][:, 0, :],
+                                                                   self._dof_pos[env_ids], self._dof_vel[env_ids], key_body_pos[env_ids],
+                                                                   self._local_root_obs, self._root_height_obs, 
+                                                                   self._dof_obs_size, self._target_states[env_ids],
+                                                                   self._hist_obs[env_ids],
+                                                                   self.progress_buf[env_ids])
+        
+        ######### Modified by Runyi #########
+        # to calc success rate yry
+        if self.isTest:
+            skill_name = self.skill_name if self.switch_skill_name is None else self.switch_skill_name
+            if skill_name == 'layup':
+                stop_length = 199
+            elif skill_name == 'pickup':
+                stop_length = 299
+            else:
+                stop_length = 599
+            if self.progress_buf[0] == stop_length:
+                succ = torch.sum(self.reached_target)/self.num_envs
+                print(f"Test env_num {self.num_envs}, Succ rate: {succ}")
+        #####################################
+
+        return
+    
+    def _update_condition(self):
+        ######### Modified by Runyi #########
+        if self.switch_skill_name is not None:
+            skill_dict = {'run': 13, 'lrun': 11, 'rrun': 12, 'layup': 31}
+            self.hoi_data_label_batch = F.one_hot(torch.tensor(skill_dict[self.switch_skill_name], device=self.device), num_classes=self.condition_size).repeat(self.hoi_data_label_batch.shape[0],1).float()
+        #####################################
+        for evt in self.evts:
+            if evt.action.isdigit() and evt.value > 0:
+                self.hoi_data_label_batch = F.one_hot(torch.tensor(int(evt.action), device=self.device), num_classes=self.condition_size).repeat(self.hoi_data_label_batch.shape[0],1).float()
+                print(evt.action)
+    
+    def play_dataset_step(self, time): #Z12
+
+        t = time
+
+        for env_id, env_ptr in enumerate(self.envs):
+            ### update object ###
+            motid = self.envid2motid[env_id].item()
+            self._target_states[env_id, :3] = self._motion_data.hoi_data_dict[motid]['obj_pos'][t,:]
+            self._target_states[env_id, 3:7] = self._motion_data.hoi_data_dict[motid]['obj_rot'][t,:]
+            self._target_states[env_id, 7:10] = torch.zeros_like(self._target_states[env_id, 7:10])
+            self._target_states[env_id, 10:13] = torch.zeros_like(self._target_states[env_id, 10:13])
+
+            ### update subject ###   
+            _humanoid_root_pos = self._motion_data.hoi_data_dict[motid]['root_pos'][t,:].clone()
+            _humanoid_root_rot = self._motion_data.hoi_data_dict[motid]['root_rot'][t,:].clone()
+            self._humanoid_root_states[env_id, 0:3] = _humanoid_root_pos
+            self._humanoid_root_states[env_id, 3:7] = _humanoid_root_rot
+            self._humanoid_root_states[env_id, 7:10] = torch.zeros_like(self._humanoid_root_states[env_id, 7:10])
+            self._humanoid_root_states[env_id, 10:13] = torch.zeros_like(self._humanoid_root_states[env_id, 10:13])
+            
+            self._dof_pos[env_id] = self._motion_data.hoi_data_dict[motid]['dof_pos'][t,:].clone()
+            self._dof_vel[env_id] = torch.zeros_like(self._dof_vel[env_id])
+
+            # env_id_int32 = self._humanoid_actor_ids[env_id].unsqueeze(0)
+
+
+            contact = self._motion_data.hoi_data_dict[motid]['contact'][t,:]
+            obj_contact = torch.any(contact > 0.1, dim=-1)
+            root_rot_vel = self._motion_data.hoi_data_dict[motid]['root_rot_vel'][t,:]
+            # angle, _ = torch_utils.exp_map_to_angle_axis(root_rot_vel)
+            angle = torch.norm(root_rot_vel)
+            abnormal = torch.any(torch.abs(angle) > 5.) #Z
+
+            if abnormal == True:
+                print("frame:", t, "abnormal:", abnormal, "angle", angle)
+                # print(" ", self._motion_data.hoi_data_dict[motid]['root_rot_vel'][t])
+                # print(" ", angle)
+                self.show_abnorm[env_id] = 10
+
+            handle = self._target_handles[env_id]
+            if obj_contact == True:
+                # print(t, "contact")
+                self.gym.set_rigid_body_color(env_ptr, handle, 0, gymapi.MESH_VISUAL,
+                                            gymapi.Vec3(1., 0., 0.))
+            else:
+                self.gym.set_rigid_body_color(env_ptr, handle, 0, gymapi.MESH_VISUAL,
+                                            gymapi.Vec3(0., 1., 0.))
+            
+            if abnormal == True or self.show_abnorm[env_id] > 0: #Z
+                for j in range(self.num_bodies): #Z humanoid_handle == 0
+                    self.gym.set_rigid_body_color(env_ptr, 0, j, gymapi.MESH_VISUAL, gymapi.Vec3(0., 0., 1.)) 
+                self.show_abnorm[env_id] -= 1
+            else:
+                for j in range(self.num_bodies): #Z humanoid_handle == 0
+                    self.gym.set_rigid_body_color(env_ptr, 0, j, gymapi.MESH_VISUAL, gymapi.Vec3(0., 1., 0.)) 
+
+        self.gym.set_actor_root_state_tensor(self.sim, gymtorch.unwrap_tensor(self._root_states))
+        self.gym.set_dof_state_tensor(self.sim, gymtorch.unwrap_tensor(self._dof_state))
+        self._refresh_sim_tensors()     
+
+        self.render(t=time)
+        self.gym.simulate(self.sim)
+
+        self._compute_observations()
+
+        return self.obs_buf
+    
+    def _draw_task_play(self,t):
+        
+        cols = np.array([[1.0, 0.0, 0.0]], dtype=np.float32) # color
+
+        self.gym.clear_lines(self.viewer)
+
+        starts = self._motion_data.hoi_data_dict[0]['hoi_data'][t, :3]
+
+        for i, env_ptr in enumerate(self.envs):
+            for j in range(len(self._key_body_ids)):
+                vec = self._motion_data.hoi_data_dict[0]['key_body_pos'][t, j*3:j*3+3]
+                vec = torch.cat([starts, vec], dim=-1).cpu().numpy().reshape([1, 6])
+                self.gym.add_lines(self.viewer, env_ptr, 1, vec, cols)
+
+        return
+
+    def render(self, sync_frame_time=False, t=0):
+        super().render(sync_frame_time)
+
+        if self.viewer:
+            self._draw_task()
+            self.play_dataset
+            if self.save_images:
+                env_ids = 0
+                # frame_id = t if self.play_dataset else self.progress_buf[env_ids]
+                os.makedirs("skillmimic/data/images/" + self.save_images_timestamp, exist_ok=True)
+                frame_id = len(os.listdir("skillmimic/data/images/" + self.save_images_timestamp))
+                rgb_filename = "skillmimic/data/images/" + self.save_images_timestamp + "/rgb_env%d_frame%05d.png" % (env_ids, frame_id)
+                self.gym.write_viewer_image_to_file(self.viewer,rgb_filename)
+        
+        return
+    
+    def _draw_task(self):
+
+        # # draw obj contact
+        # obj_contact = torch.any(torch.abs(self._tar_contact_forces[..., 0:2]) > 0.1, dim=-1)
+        # for env_id, env_ptr in enumerate(self.envs):
+        #     env_ptr = self.envs[env_id]
+        #     handle = self._target_handles[env_id]
+
+        #     if obj_contact[env_id] == True:
+        #         self.gym.set_rigid_body_color(env_ptr, handle, 0, gymapi.MESH_VISUAL,
+        #                                     gymapi.Vec3(1., 0., 0.))
+        #     else:
+        #         self.gym.set_rigid_body_color(env_ptr, handle, 0, gymapi.MESH_VISUAL,
+        #                                     gymapi.Vec3(0., 1., 0.))
+
+        return
+
+    def get_num_amp_obs(self):
+        return self.ref_hoi_obs_size
+
+
+
+#####################################################################
+###=========================jit functions=========================###
+#####################################################################
+@torch.jit.script
+def get_humanoid_obs(root_pos, root_rot, body_pos):
+    root_h_obs = root_pos[:, 2:3]
+    heading_rot = torch_utils.calc_heading_quat_inv(root_rot)
+    
+    heading_rot_expand = heading_rot.unsqueeze(-2)
+    heading_rot_expand = heading_rot_expand.repeat((1, body_pos.shape[1], 1))
+    flat_heading_rot = heading_rot_expand.reshape(heading_rot_expand.shape[0] * heading_rot_expand.shape[1], 
+                                               heading_rot_expand.shape[2])
+    
+    root_pos_expand = root_pos.unsqueeze(-2)
+    local_body_pos = body_pos - root_pos_expand
+    flat_local_body_pos = local_body_pos.reshape(local_body_pos.shape[0] * local_body_pos.shape[1], local_body_pos.shape[2])
+    flat_local_body_pos = quat_rotate(flat_heading_rot, flat_local_body_pos)
+    local_body_pos = flat_local_body_pos.reshape(local_body_pos.shape[0], local_body_pos.shape[1] * local_body_pos.shape[2])
+    local_body_pos = local_body_pos[..., 3:] # remove root pos
+
+    obs = torch.cat((root_h_obs, local_body_pos), dim=-1)
+    return obs
+
+@torch.jit.script
+def get_obj_obs(root_pos, root_rot, tar_pos):
+    heading_rot = torch_utils.calc_heading_quat_inv(root_rot)
+    
+    local_tar_pos = tar_pos - root_pos
+    local_tar_pos[..., -1] = tar_pos[..., -1]
+    local_tar_pos = quat_rotate(heading_rot, local_tar_pos)
+
+    return local_tar_pos
+
+@torch.jit.script
+def build_hoi_observations(root_pos, root_rot, root_vel, root_ang_vel, dof_pos, dof_vel, key_body_pos, local_root_obs, 
+                           root_height_obs, dof_obs_size, target_states, hist_vector, progress_buf):
+    # type: (Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, Tensor, bool, bool, int, Tensor, Tensor, Tensor) -> Tensor
+    dof_vel = dof_vel*(progress_buf!=1).unsqueeze(dim=-1)
+
+    contact = torch.zeros(key_body_pos.shape[0],1,device=dof_vel.device)
+    obs = torch.cat((root_pos, torch_utils.quat_to_exp_map(root_rot),
+                        dof_pos, dof_vel,
+                        target_states[:,:10],
+                        key_body_pos.contiguous().view(-1,key_body_pos.shape[1]*key_body_pos.shape[2]), 
+                        contact,
+                        ), dim=-1)
+    return obs
+
+@torch.jit.script
+def compute_local_hoi_data(hoi_data_batch: Tensor, switch_root_pos: Tensor, switch_root_rot_quat: Tensor, len_keypos: int) -> Tensor:
+    # hoi_data_batch (60, 337)
+    # switch_root_rot_quat (1, 4)
+    local_hoi_data_batch = hoi_data_batch.clone()
+    init_root_pos = hoi_data_batch[0,:3]
+    init_root_rot = hoi_data_batch[0,3:3+3]
+
+    root_pos = hoi_data_batch[:,:3]
+    root_rot = hoi_data_batch[:,3:3+3]
+    dof_pos = hoi_data_batch[:,6:6+52*3]
+    dof_pos_vel = hoi_data_batch[:,162:162+52*3]
+    obj_pos = hoi_data_batch[:,318:318+3]
+    obj_rot = hoi_data_batch[:,321:321+4]
+    obj_pos_vel = hoi_data_batch[:,325:325+3]
+    key_pos = hoi_data_batch[:,328:328+len_keypos*3]
+    contact = hoi_data_batch[:,-1:] # fake one
+    nframes = hoi_data_batch.shape[0]
+
+    switch_root_rot_euler_z = torch_utils.quat_to_euler(switch_root_rot_quat)[2] # (1, 1) 
+    source_root_rot_euler_z = torch_utils.quat_to_euler(torch_utils.exp_map_to_quat(init_root_rot))[2]  # (1, 1) 
+    source_to_switch_euler_z = switch_root_rot_euler_z - source_root_rot_euler_z # (1, 1)
+    source_to_switch_euler_z = (source_to_switch_euler_z + torch.pi) % (2 * torch.pi) - torch.pi  # 归一化到 [-pi, pi]
+    source_to_switch_euler_z = source_to_switch_euler_z.squeeze()
+    zeros = torch.zeros_like(source_to_switch_euler_z)
+    source_to_switch = quat_from_euler_xyz(zeros, zeros, source_to_switch_euler_z)
+    source_to_switch = source_to_switch.repeat(nframes, 1) # (nframes, 4)
+
+    # referece to the new root
+    # local_root_pos
+    relative_root_pos = root_pos - init_root_pos
+    local_relative_root_pos = torch_utils.quat_rotate(source_to_switch, relative_root_pos)
+    local_root_pos = local_relative_root_pos + switch_root_pos
+    local_root_pos[:, 2] = root_pos[:, 2]
+    # local_root_rot
+    root_rot_quat = torch_utils.exp_map_to_quat(root_rot)
+    local_root_rot = torch_utils.quat_to_exp_map(torch_utils.quat_multiply(source_to_switch, root_rot_quat))
+    # local_obj_pos
+    relative_obj_pos = obj_pos - init_root_pos
+    local_relative_obj_pos = torch_utils.quat_rotate(source_to_switch, relative_obj_pos)
+    local_obj_pos = local_relative_obj_pos + switch_root_pos
+    local_obj_pos[:, 2] = obj_pos[:, 2]
+    # local_obj_pos_vel
+    local_obj_pos_vel = torch_utils.quat_rotate(source_to_switch, obj_pos_vel)
+    # local_key_pos
+    key_pos = key_pos.reshape(-1, len_keypos, 3)
+    relative_key_pos = key_pos - init_root_pos
+    local_relative_key_pos = torch.zeros_like(relative_key_pos)
+    for i in range(len_keypos):
+        local_relative_key_pos[:,i] = torch_utils.quat_rotate(source_to_switch, relative_key_pos[:,i])
+    local_key_pos = local_relative_key_pos + switch_root_pos
+    local_key_pos[..., 2] = key_pos[..., 2]
+    # print('key_pos:', key_pos[20, 8])
+    # print('local_key_pos:', local_key_pos[20, 8])
+
+    local_hoi_data_batch[:,:3] =  local_root_pos
+    local_hoi_data_batch[:,3:3+3] =  local_root_rot
+    local_hoi_data_batch[:,318:318+3] = local_obj_pos
+    local_hoi_data_batch[:,325:325+3] = local_obj_pos_vel
+    local_hoi_data_batch[:,328:328+len_keypos*3] = local_key_pos.reshape(-1, len_keypos*3)
+
+    # print('init_root_pos:', init_root_pos)
+    # print('local_root_pos:', local_root_pos[0])
+    # print('switch_root_pos:', switch_root_pos)
+    # print('local_root_rot:', torch_utils.quat_to_euler(torch_utils.exp_map_to_quat(local_root_rot[0])))
+    # print('switch_root_rot:', torch_utils.quat_to_euler(switch_root_rot_quat))
+    # exit()
+
+    return local_hoi_data_batch
+
+
+@torch.jit.script
+def compute_humanoid_reward(hoi_ref: Tensor, hoi_obs: Tensor, hoi_obs_hist: Tensor, contact_buf: Tensor, tar_contact_forces: Tensor, 
+                            len_keypos: int, w: Dict[str, Tensor],  skill_label: Tensor) -> Tensor:
+    
+    ### data preprocess ###
+    
+    # simulated states
+    root_pos = hoi_obs[:,:3]
+    root_rot = hoi_obs[:,3:3+3]
+    dof_pos = hoi_obs[:,6:6+52*3]
+    dof_pos_vel = hoi_obs[:,162:162+52*3]
+    obj_pos = hoi_obs[:,318:318+3]
+    obj_rot = hoi_obs[:,321:321+4]
+    obj_pos_vel = hoi_obs[:,325:325+3]
+    key_pos = hoi_obs[:,328:328+len_keypos*3]
+    contact = hoi_obs[:,-1:]# fake one
+    key_pos = torch.cat((root_pos, key_pos),dim=-1)
+    body_rot = torch.cat((root_rot, dof_pos),dim=-1)
+    ig = key_pos.view(-1,len_keypos+1,3).transpose(0,1) - obj_pos[:,:3]
+    ig_wrist = ig.transpose(0,1)[:,0:7+1,:].view(-1,(7+1)*3) #ZC
+    ig = ig.transpose(0,1).view(-1,(len_keypos+1)*3)
+
+    dof_pos_vel_hist = hoi_obs_hist[:,162:162+52*3] #ZC
+    
+    # reference states
+    ref_root_pos = hoi_ref[:,:3]
+    ref_root_rot = hoi_ref[:,3:3+3]
+    ref_dof_pos = hoi_ref[:,6:6+52*3]
+    ref_dof_pos_vel = hoi_ref[:,162:162+52*3]
+    ref_obj_pos = hoi_ref[:,318:318+3]
+    ref_obj_rot = hoi_ref[:,321:321+4]
+    ref_obj_pos_vel = hoi_ref[:,325:325+3]
+    ref_key_pos = hoi_ref[:,328:328+len_keypos*3]
+    ref_obj_contact = hoi_ref[:,-1:]
+    ref_key_pos = torch.cat((ref_root_pos, ref_key_pos),dim=-1)
+    ref_body_rot = torch.cat((ref_root_rot, ref_dof_pos),dim=-1)
+    ref_ig = ref_key_pos.view(-1,len_keypos+1,3).transpose(0,1) - ref_obj_pos[:,:3]
+    ref_ig_wrist = ref_ig.transpose(0,1)[:,0:7+1,:].view(-1,(7+1)*3) #ZC
+    ref_ig = ref_ig.transpose(0,1).view(-1,(len_keypos+1)*3)
+
+
+    ### body reward ###
+
+    # body pos reward
+    ep = torch.mean((ref_key_pos - key_pos)**2,dim=-1)
+    # ep = torch.mean((ref_key_pos[:,0:(7+1)*3] - key_pos[:,0:(7+1)*3])**2,dim=-1) #ZC
+    rp = torch.exp(-ep*w['p'])
+
+    # body rot reward
+    er = torch.mean((ref_body_rot - body_rot)**2,dim=-1)
+    rr = torch.exp(-er*w['r'])
+
+    # body pos vel reward
+    epv = torch.zeros_like(ep)
+    rpv = torch.exp(-epv*w['pv'])
+
+    # body rot vel reward
+    erv = torch.mean((ref_dof_pos_vel - dof_pos_vel)**2,dim=-1)
+    rrv = torch.exp(-erv*w['rv'])
+
+    # body vel smoothness reward
+    # e_vel_diff = torch.mean((dof_pos_vel - dof_pos_vel_hist)**2, dim=-1)
+    # r_vel_diff = torch.exp(-e_vel_diff * 0.05) #w['vel_diff']
+    e_vel_diff = torch.mean((dof_pos_vel - dof_pos_vel_hist)**2 / (((ref_dof_pos_vel**2) + 1e-12)*1e12), dim=-1)
+    r_vel_diff = torch.exp(-e_vel_diff * 0.1) #w['vel_diff']
+
+
+    rb = rp*rr*rpv*rrv *r_vel_diff #ZC3
+    # print(rp, rr, rpv, rrv) 
+
+
+    ### object reward ###
+
+    # object pos reward
+    eop = torch.mean((ref_obj_pos - obj_pos)**2,dim=-1)
+    rop = torch.exp(-eop*w['op'])
+
+    # object rot reward
+    eor = torch.zeros_like(ep) #torch.mean((ref_obj_rot - obj_rot)**2,dim=-1)
+    ror = torch.exp(-eor*w['or'])
+
+    # object pos vel reward
+    eopv = torch.mean((ref_obj_pos_vel - obj_pos_vel)**2,dim=-1)
+    ropv = torch.exp(-eopv*w['opv'])
+
+    # object rot vel reward
+    eorv = torch.zeros_like(ep) #torch.mean((ref_obj_rot_vel - obj_rot_vel)**2,dim=-1)
+    rorv = torch.exp(-eorv*w['orv'])
+
+    ro = rop*ror*ropv*rorv
+
+
+    ### interaction graph reward ###
+
+    eig = torch.mean((ref_ig - ig)**2,dim=-1) #Zw
+    # eig = torch.mean((ref_ig_wrist - ig_wrist)**2,dim=-1)
+    rig = torch.exp(-eig*w['ig'])
+
+
+    ### simplified contact graph reward ###
+
+    # Since Isaac Gym does not yet provide API for detailed collision detection in GPU pipeline, 
+    # we use force detection to approximate the contact status.
+    # In this case we use the CG node istead of the CG edge for imitation.
+    # TODO: update the code once collision detection API is available.
+
+    ## body ids
+    # Pelvis, 0 
+    # L_Hip, 1 
+    # L_Knee, 2
+    # L_Ankle, 3
+    # L_Toe, 4
+    # R_Hip, 5 
+    # R_Knee, 6
+    # R_Ankle, 7
+    # R_Toe, 8
+    # Torso, 9
+    # Spine, 10 
+    # Spine1, 11
+    # Chest, 12
+    # Neck, 13
+    # Head, 14
+    # L_Thorax, 15
+    # L_Shoulder, 16
+    # L_Elbow, 17
+    # L_Wrist, 18
+    # L_Hand, 19-33
+    # R_Thorax, 34 
+    # R_Shoulder, 35
+    # R_Elbow, 36
+    # R_Wrist, 37
+    # R_Hand, 38-52
+
+    # body contact
+    contact_body_ids = [0,1,2,5,6,9,10,11,12,13,14,15,16,17,34,35,36]
+    body_contact_buf = contact_buf[:, contact_body_ids, :].clone()
+    body_contact = torch.all(torch.abs(body_contact_buf) < 0.1, dim=-1)
+    body_contact = 1. - torch.all(body_contact, dim=-1).to(torch.float) # =0 when no contact happens to the body
+
+    # object contact
+    obj_contact = torch.any(torch.abs(tar_contact_forces[..., 0:2]) > 0.1, dim=-1).to(torch.float) # =1 when contact happens to the object
+
+    ref_body_contact = torch.zeros_like(ref_obj_contact) # no body contact for all time
+    ecg1 = torch.abs(body_contact - ref_body_contact[:,0])
+    rcg1 = torch.exp(-ecg1*w['cg1'])
+    ecg2 = torch.abs(obj_contact - ref_obj_contact[:,0])
+    rcg2 = torch.exp(-ecg2*w['cg2'])
+
+    rcg = rcg1*rcg2
+
+
+    ### task-agnostic HOI imitation reward ###
+    reward = torch.where((skill_label!=0) & (skill_label!=10), rb*ro*rig*rcg, rb)
+    
+    return reward
+
+
+@torch.jit.script
+def compute_humanoid_reset(reset_buf, progress_buf, contact_buf, rigid_body_pos,
+                           max_episode_length, enable_early_termination, termination_heights, hoi_ref, hoi_obs, envid2episode_lengths,
+                           isTest, maxEpisodeLength, skill_label):
+    # type: (Tensor, Tensor, Tensor, Tensor, float, bool, Tensor, Tensor, Tensor, Tensor, bool, int, Tensor) -> Tuple[Tensor, Tensor]
+    terminated = torch.zeros_like(reset_buf)
+
+    if (enable_early_termination):
+        body_height = rigid_body_pos[:, 0, 2] # root height
+        body_fall = body_height < termination_heights# [4096] 
+        has_failed = body_fall.clone()
+        has_failed *= (progress_buf > 1)
+        
+        terminated = torch.where(has_failed, torch.ones_like(reset_buf), terminated)
+        ########## Modified by Runyi ##########
+        skill_mask = (skill_label == 0)
+        terminated = torch.where(skill_mask, torch.zeros_like(terminated), terminated)
+        #######################################
+
+    if isTest and maxEpisodeLength > 0 :
+        reset = torch.where(progress_buf >= max_episode_length -1, torch.ones_like(reset_buf), terminated)
+    else:
+        reset = torch.where(progress_buf >= envid2episode_lengths-1, torch.ones_like(reset_buf), terminated) #ZC
+    
+    # reset = torch.where(progress_buf >= max_episode_length -1, torch.ones_like(reset_buf), terminated)
+    # reset = torch.zeros_like(reset_buf) #ZC300
+
+    return reset, terminated
