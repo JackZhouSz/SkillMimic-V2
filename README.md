@@ -4,7 +4,7 @@
 [Runyi Yu*](https://ingrid789.github.io/IngridYu/), [Yinhuai Wang*](https://wyhuai.github.io/info/), [Qihan Zhao*](https://scholar.google.com/citations?hl=en&user=36UHwBQAAAAJ), Hok Wai Tsui, [Jingbo Wang](https://ece.hkust.edu.hk/pingtan), [Ping Tan]() and [Qifeng Chen](https://cqf.io)
 
 
-<strong>is Accpeted by SIGGRAPH 2025</strong>
+<strong>SIGGRAPH 2025</strong>
 
 <a href='https://arxiv.org/abs/xxxx.xxxxx'><img src='https://img.shields.io/badge/ArXiv-2408.15270-red'></a> <a href='https://ingrid789.github.io/SkillMimicV2/'><img src='https://img.shields.io/badge/Project-Page-Green'></a> ![visitors](https://visitor-badge.laobi.icu/badge?page_id=Ingrid789.SkillMimic-V2&left_color=green&right_color=red) [![GitHub](https://img.shields.io/github/stars/Ingrid789/SkillMimic-V2?style=social)](https://github.com/Ingrid789/SkillMimic-V2,pko) <a href='https://youtu.be/jk94jXUsyhE'><img src='images/youtube_icon.png' style="width: 60px; height: 20px;"></a>
 </div>
