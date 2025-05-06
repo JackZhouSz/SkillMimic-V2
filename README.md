@@ -6,11 +6,11 @@
 
 <strong>SIGGRAPH 2025</strong>
 
-<a href='https://arxiv.org/abs/xxxx.xxxxx'><img src='https://img.shields.io/badge/ArXiv-2408.15270-red'></a> <a href='https://ingrid789.github.io/SkillMimicV2/'><img src='https://img.shields.io/badge/Project-Page-Green'></a> ![visitors](https://visitor-badge.laobi.icu/badge?page_id=Ingrid789.SkillMimic-V2&left_color=green&right_color=red) [![GitHub](https://img.shields.io/github/stars/Ingrid789/SkillMimic-V2?style=social)](https://github.com/Ingrid789/SkillMimic-V2,pko) <a href='https://youtu.be/jk94jXUsyhE'><img src='images/youtube_icon.png' style="width: 60px; height: 20px;"></a>
+<a href='https://arxiv.org/abs/2505.02094'><img src='https://img.shields.io/badge/ArXiv-2408.15270-red'></a> <a href='https://ingrid789.github.io/SkillMimicV2/'><img src='https://img.shields.io/badge/Project-Page-Green'></a> ![visitors](https://visitor-badge.laobi.icu/badge?page_id=Ingrid789.SkillMimic-V2&left_color=green&right_color=red) [![GitHub](https://img.shields.io/github/stars/Ingrid789/SkillMimic-V2?style=social)](https://github.com/Ingrid789/SkillMimic-V2,pko) <a href='https://youtu.be/jk94jXUsyhE'><img src='images/youtube_icon.png' style="width: 60px; height: 20px;"></a>
 </div>
 
 <!-- # SkillMimic-V2
-[Paper](https://arxiv.org/abs/xxxx.xxxxx) | [Project Page](https://ingrid789.github.io/SkillMimicV2/) | [Video](https://youtu.be/jk94jXUsyhE)
+[Paper](https://arxiv.org/abs/2505.02094) | [Project Page](https://ingrid789.github.io/SkillMimicV2/) | [Video](https://youtu.be/jk94jXUsyhE)
 
 Official code release for the following paper:
 "**SkillMimic-V2: Learning Robust and Generalizable Interaction Skills from Sparse and Noisy Demonstrations**" -->
