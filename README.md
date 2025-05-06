@@ -127,7 +127,7 @@ If you find this repository useful for your research, please cite the following 
       title={SkillMimic-V2: Learning Robust and Generalizable Interaction Skills from Sparse and Noisy Demonstrations }, 
       author={Runyi Yu, Yinhuai Wang, Qihan Zhao, Hok Wai Tsui, Jingbo Wang, Ping Tan and Qifeng Chen},
       year={2025},
-      eprint={xxxx.xxxx},
+      eprint={2505.02094},
       archivePrefix={arXiv},
       primaryClass={cs.CV}
     }
