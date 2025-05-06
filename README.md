@@ -1,7 +1,7 @@
 <div align="center">
 <h2><font color="#3c9ff7"> SkillMimic-V2</font>: Learning Robust and Generalizable Interaction Skills from Sparse and Noisy Demonstrations</h2>
 
-[Runyi Yu*](https://ingrid789.github.io/IngridYu/), [Yinhuai Wang*](https://wyhuai.github.io/info/), [Qihan Zhao*](https://scholar.google.com/citations?hl=en&user=36UHwBQAAAAJ), Hok Wai Tsui, [Jingbo Wang](https://ece.hkust.edu.hk/pingtan), [Ping Tan]() and [Qifeng Chen](https://cqf.io)
+[Runyi Yu*](https://ingrid789.github.io/IngridYu/), [Yinhuai Wang*](https://wyhuai.github.io/info/), [Qihan Zhao*](https://scholar.google.com/citations?hl=en&user=36UHwBQAAAAJ), Hok Wai Tsui, [Jingbo Wang](https://scholar.google.com/citations?user=GStTsxAAAAAJ&hl=en&oi=ao), [Ping Tan](https://ece.hkust.edu.hk/pingtan) and [Qifeng Chen](https://cqf.io)
 
 
 <strong>SIGGRAPH 2025</strong>
