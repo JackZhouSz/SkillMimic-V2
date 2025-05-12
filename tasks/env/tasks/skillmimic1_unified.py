@@ -13,11 +13,10 @@ from datetime import datetime
 from utils import torch_utils
 from utils.motion_data_handler import MotionDataHandler
 
-from env.tasks.skillmimic import SkillMimicBallPlay
-from env.tasks.skillmimic2_reweight import SkillMimic2BallPlayReweight
+from env.tasks.skillmimic1_reweight import SkillMimic1BallPlayReweight
 
 
-class SkillMimic2BallPlayUnified(SkillMimic2BallPlayReweight): 
+class SkillMimic1BallPlayUnified(SkillMimic1BallPlayReweight): 
     def __init__(self, cfg, sim_params, physics_engine, device_type, device_id, headless):
 
         super().__init__(cfg=cfg,

@@ -1,11 +1,13 @@
 import torch
+from torch import Tensor
+from typing import Tuple
 import torch.nn.functional as F
 from collections import defaultdict
 import copy
 
 from env.tasks.skillmimic1 import SkillMimic1BallPlay
 
-class SkillMimic2BallPlayReweight(SkillMimic1BallPlay): 
+class SkillMimic1BallPlayReweight(SkillMimic1BallPlay): 
     def __init__(self, cfg, sim_params, physics_engine, device_type, device_id, headless):
         super().__init__(cfg=cfg,
                          sim_params=sim_params,

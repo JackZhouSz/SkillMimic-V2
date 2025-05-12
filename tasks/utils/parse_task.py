@@ -27,19 +27,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 from env.tasks.vec_task_wrappers import VecTaskPythonWrapper
-from env.tasks.skillmimic import SkillMimicBallPlay
-from env.tasks.skillmimic_rand import SkillMimicBallPlayDomRand
-from env.tasks.skillmimic_rand import SkillMimicBallPlayRIS
-from env.tasks.skillmimic_rand import SkillMimicBallPlayRISBuffernode
-from env.tasks.skillmimic_localhist_phase import SkillMimicBallPlayLocalHistPhase
-from env.tasks.skillmimic_60frame import SkillMimicBallPlay60Frame
-from env.tasks.skillmimic_refobj import SkillMimicBallPlayRefobj
-from env.tasks.skillmimic_hist import SkillMimicBallPlayHist
-from env.tasks.skillmimic_localhist import SkillMimicBallPlayLocalHist
-from env.tasks.skillmimic_localhist_1hist import SkillMimicBallPlayLocalHistOnehist
-from env.tasks.skillmimic_localhist_objhist import SkillMimicBallPlayLocalHistObjhist
-from env.tasks.skillmimic_localhist_unified_new import SkillMimicBallPlayLocalHistUnifiedRIS
-from env.tasks.skillmimic_localhist_unified_new import SkillMimicBallPlayLocalHistUnifiedRISBuffernode
+
 
 from env.tasks.offline_state_search import OfflineStateSearch
 from env.tasks.offline_state_search_parahome import OfflineStateSearchParahome
@@ -53,32 +41,20 @@ from env.tasks.skillmimic_parahome_localhist import SkillMimicParahomeLocalHist
 from env.tasks.skillmimic_parahome_localhist import SkillMimicParahomeLocalHistRIS
 from env.tasks.skillmimic_parahome_localhist import SkillMimicParahomeLocalHistRISBuffernode
 from env.tasks.skillmimic_parahome_multiobj import SkillMimicParahomeMultiobj, SkillMimicParahomePhaseMultiobj
-from env.tasks.hrl_circling import HRLCircling
-from env.tasks.hrl_heading_easy import HRLHeadingEasy
-from env.tasks.hrl_throwing import HRLThrowing
-from env.tasks.hrl_scoring_layup import HRLScoringLayup
+
 from env.tasks.hrl_virtual import HRLVirtual
 
 from env.tasks.skillmimic1 import SkillMimic1BallPlay
-from env.tasks.skillmimic1_60hist import SkillMimic1BallPlay60Hist
-from env.tasks.skillmimic2_unified import SkillMimic2BallPlayUnified
-from env.tasks.skillmimic2_rand import SkillMimic2BallPlayRand
-from env.tasks.skillmimic2_hist import SkillMimic2BallPlayHist
-from env.tasks.skillmimic2_reweight import SkillMimic2BallPlayReweight
-from env.tasks.amp import SkillMimicAMPLocomotion
-from env.tasks.amp_getup import SkillMimicAMPGetup
-from env.tasks.amp_4eval import SkillMimicAMPLocomotion4Eval
-from env.tasks.deepmimic import DeepMimicBallPlay
-from env.tasks.deepmimic import DeepMimicBallPlayDomRand
-from env.tasks.deepmimic import DeepMimicBallPlayRIS
-from env.tasks.deepmimic import DeepMimicBallPlayRISBuffernode
-from env.tasks.deepmimic_localhist import DeepMimicBallPlayLocalHist
-from env.tasks.deepmimic_localhist_unified_new import DeepMimicBallPlayLocalHistUnifiedRIS
-from env.tasks.deepmimic_localhist_unified_new import DeepMimicBallPlayLocalHistUnifiedRISBuffernode
+
+from env.tasks.skillmimic1_unified import SkillMimic1BallPlayUnified
+from env.tasks.skillmimic1_rand import SkillMimic1BallPlayRand
+from env.tasks.skillmimic1_hist import SkillMimic1BallPlayHist
+from env.tasks.skillmimic1_reweight import SkillMimic1BallPlayReweight
+
 
 from env.tasks.deepmimic1 import DeepMimic1BallPlay
-from env.tasks.deepmimic2_unified import DeepMimic2BallPlayUnified
-from env.tasks.deepmimic2_hist import DeepMimic2BallPlayHist
+from env.tasks.deepmimic1_unified import DeepMimic1BallPlayUnified
+from env.tasks.deepmimic2 import DeepMimic2BallPlay
 
 from env.tasks.deepmimic_parahome import DeepMimicParahome
 from env.tasks.deepmimic_parahome import DeepMimicParahomeDomRand

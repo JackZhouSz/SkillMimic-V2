@@ -33,6 +33,7 @@ class SkillMimic1BallPlay(HumanoidWholeBodyWithObject):
         self.save_images_timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         self.init_vel = cfg['env']['initVel']
         self.isTest = cfg['args'].test
+        self.test_random_pick = cfg['env']['testRandomPick']
 
         if not hasattr(self, 'condition_size'):
             self.condition_size = 64
@@ -201,10 +202,10 @@ class SkillMimic1BallPlay(HumanoidWholeBodyWithObject):
         self.gym.subscribe_viewer_keyboard_event(self.viewer, gymapi.KEY_B, "035") #
 
         return
-
+    
     def _reset_target(self, env_ids):
         super()._reset_target(env_ids)
-        if self.isTest and self.skill_name == 'pickup':
+        if self.isTest and self.skill_name == 'pickup' and self.test_random_pick:
             radius = torch.rand(len(env_ids), device=self.device)*2.5 + 0.5 # [0.5, 3]
             theta = torch.rand(len(env_ids), device=self.device)*2*np.pi
             self._target_states[env_ids, 0] = self.init_root_pos[env_ids, 0] + radius * torch.cos(theta)
@@ -311,28 +312,6 @@ class SkillMimic1BallPlay(HumanoidWholeBodyWithObject):
                                                                    self._dof_obs_size, self._target_states[env_ids],
                                                                    self._hist_obs[env_ids],
                                                                    self.progress_buf[env_ids])
-        return
-        # if (env_ids is None):
-        #     self._curr_obs[:] = build_hoi_observations(self._rigid_body_pos[:, 0, :],
-        #                                                        self._rigid_body_rot[:, 0, :],
-        #                                                        self._rigid_body_vel[:, 0, :],
-        #                                                        self._rigid_body_ang_vel[:, 0, :],
-        #                                                        self._dof_pos, self._dof_vel, key_body_pos,
-        #                                                        self._local_root_obs, self._root_height_obs, 
-        #                                                        self._dof_obs_size, self._target_states,
-        #                                                        self._hist_obs,
-        #                                                        self.progress_buf)
-        # else:
-        #     self._curr_obs[env_ids] = build_hoi_observations(self._rigid_body_pos[env_ids][:, 0, :],
-        #                                                            self._rigid_body_rot[env_ids][:, 0, :],
-        #                                                            self._rigid_body_vel[env_ids][:, 0, :],
-        #                                                            self._rigid_body_ang_vel[env_ids][:, 0, :],
-        #                                                            self._dof_pos[env_ids], self._dof_vel[env_ids], key_body_pos[env_ids],
-        #                                                            self._local_root_obs, self._root_height_obs, 
-        #                                                            self._dof_obs_size, self._target_states[env_ids],
-        #                                                            self._hist_obs[env_ids],
-        #                                                            self.progress_buf[env_ids])
-
         return
     
     def _update_condition(self):
