@@ -189,10 +189,10 @@ class MotionDataModule(pl.LightningDataModule):
         self.batch_size = batch_size
 
     def setup(self, stage=None):
-        # 在此处初始化数据集并进行划分
+        # Initialize dataset and split it here
         dataset = CustomDataset(self.folder_path, self.window_size)
         
-        # 随机划分训练集和验证集
+        # Randomly split into training and validation sets
         train_size = int(0.85 * len(dataset))
         val_size = len(dataset) - train_size
         self.train_dataset, self.val_dataset = random_split(dataset, [train_size, val_size])
@@ -211,7 +211,7 @@ class MotionDataModuleAll4Train(pl.LightningDataModule):
         self.batch_size = batch_size
 
     def setup(self, stage=None):
-        # 在此处初始化数据集并进行划分
+        # Initialize dataset here
         self.dataset = CustomDataset(self.folder_path, self.window_size)
 
     def train_dataloader(self):

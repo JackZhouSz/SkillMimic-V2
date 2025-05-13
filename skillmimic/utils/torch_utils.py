@@ -58,14 +58,14 @@ def quat_to_angle_axis(q):
 @torch.jit.script
 def quat_to_euler(q: Tensor) -> Tensor:
     """
-    将归一化的四元数转换为欧拉角（roll, pitch, yaw）。
-    参数: q (Tensor): 四元数张量，形状为 (..., 4)，假设最后一个维度为 [x, y, z, w]。
-    返回: Tensor: 欧拉角张量，形状为 (..., 3)，顺序为 [roll, pitch, yaw]，单位为弧度。
+    Convert normalized quaternion to Euler angles (roll, pitch, yaw).
+    Args: q (Tensor): Quaternion tensor with shape (..., 4), assuming last dimension is [x, y, z, w].
+    Returns: Tensor: Euler angles tensor with shape (..., 3), in order [roll, pitch, yaw], in radians.
     """
-    # 提取四元数的分量
+    # Extract quaternion components
     x, y, z, w = q[..., 0], q[..., 1], q[..., 2], q[..., 3]
 
-    # 计算互相关量
+    # Calculate cross terms
     # roll (x-axis rotation)
     sinr_cosp = 2.0 * (w * x + y * z)
     cosr_cosp = 1.0 - 2.0 * (x * x + y * y)
@@ -73,7 +73,7 @@ def quat_to_euler(q: Tensor) -> Tensor:
 
     # pitch (y-axis rotation)
     sinp = 2.0 * (w * y - z * x)
-    # 处理数值范围，防止 asin 输入超出 [-1, 1]
+    # Handle numerical range to prevent asin input from exceeding [-1, 1]
     sinp_clamped = torch.clamp(sinp, -1.0, 1.0)
     pitch = torch.asin(sinp_clamped)
 
@@ -82,8 +82,8 @@ def quat_to_euler(q: Tensor) -> Tensor:
     cosy_cosp = 1.0 - 2.0 * (y * y + z * z)
     yaw = torch.atan2(siny_cosp, cosy_cosp)
 
-    # 堆叠欧拉角
-    euler = torch.stack((roll, pitch, yaw), dim=-1)  # 形状为 (..., 3)
+    # Stack Euler angles
+    euler = torch.stack((roll, pitch, yaw), dim=-1)  # Shape: (..., 3)
 
     return euler
 

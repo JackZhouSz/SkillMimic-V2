@@ -137,7 +137,7 @@ class ParaMotionDataHandlerMultiobj(ParaMotionDataHandler):
         # No need to calculate sim_obj & sim_rel for getup and run
         sim = sim_pose * sim_obj0 * sim_obj1 * sim_rel0 * sim_rel1
 
-        # 找到第一个大于2, 且不为-1的索引
+        # Find the first index that is greater than 2 and not -1
         sorted_indices = torch.argsort(sim, descending=True)
         max_ind = next((ind.item() for ind in sorted_indices if ind.item() not in [0, 1, len(sim)-1]),
                             sorted_indices[0].item())

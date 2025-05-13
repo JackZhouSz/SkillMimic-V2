@@ -215,7 +215,7 @@ class ParaMotionDataHandler:
         # No need to calculate sim_obj & sim_rel for getup and run
         sim = sim_pose * sim_obj * sim_rel if motion['hoi_data_text'] not in ['000', '010'] else sim_pose
 
-        # 找到第一个大于2, 且不为-1的索引
+        # Find the first index that is greater than 2 and not -1
         sorted_indices = torch.argsort(sim, descending=True)
         max_ind = next((ind.item() for ind in sorted_indices if ind.item() not in [0, 1, len(sim)-1]),
                             sorted_indices[0].item())
@@ -252,7 +252,7 @@ class ParaMotionDataHandler:
         if not self.reweight:
             motion_times = np.random.randint(start, end + 1)
         else:
-            possible_times = [np.arange(s, e + 1) for s, e in zip(start, end)] # 计算每个 motion 的可能时间点
+            possible_times = [np.arange(s, e + 1) for s, e in zip(start, end)] # Calculate possible time points for each motion
             motion_times = np.zeros_like(motion_ids)
             for i in range(len(motion_ids)):
                 sample_rate = self.time_sample_rate[motion_ids[i].item()].numpy()
@@ -466,7 +466,7 @@ class ParaMotionDataHandlerOfflineNew(ParaMotionDataHandler):
             #     print(f'sim_rel: {sim_rel}')
             #     print(f'sim: {sim[0]}')
 
-            # 找到第一个大于2, 且不为-1的索引
+            # Find the first index that is greater than 2 and not -1
             sorted_indices = torch.argsort(sim, descending=True)
             max_ind = next((ind.item() for ind in sorted_indices if ind.item() not in [0, 1, len(sim)-1]),
                             sorted_indices[0].item())
@@ -494,7 +494,7 @@ def get_local_motion(source_motion, source_time, switch_motion, len_keypos):
     sw_root_rot = torch_utils.exp_map_to_quat(switch_motion['root_rot_3d']) # (num_frames, 4)
     sw_root_rot_euler_z = torch_utils.quat_to_euler(sw_root_rot)[:, 2] # (num_frames,)
     sw2sc_root_rot_euler_z = sc_root_rot_euler_z - sw_root_rot_euler_z # (num_frames,)
-    sw2sc_root_rot_euler_z = (sw2sc_root_rot_euler_z + torch.pi) % (2 * torch.pi) - torch.pi  # 归一化到 [-pi, pi]
+    sw2sc_root_rot_euler_z = (sw2sc_root_rot_euler_z + torch.pi) % (2 * torch.pi) - torch.pi  # Normalize to [-pi, pi]
     zeros = torch.zeros_like(sw2sc_root_rot_euler_z)
     switch_to_source = quat_from_euler_xyz(zeros, zeros, sw2sc_root_rot_euler_z) # (num_frames, 4)
 

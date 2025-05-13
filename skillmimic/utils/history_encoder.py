@@ -15,9 +15,9 @@ class HistoryEncoder(nn.Module):
     
     def resume_from_checkpoint(self, checkpoint_path):
         checkpoint = torch.load(checkpoint_path)
-        # 提取模型的状态字典
+        # Extract the model's state dict
         state_dict = checkpoint['state_dict']
-        # 移除前缀 'history_encoder.' 并加载到当前模型中
+        # Remove the prefix 'history_encoder.' and load into the current model
         new_state_dict = {}
         for k, v in state_dict.items():
             if k.startswith('history_encoder.'):
