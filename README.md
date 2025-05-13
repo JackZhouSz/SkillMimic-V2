@@ -20,9 +20,9 @@ Official code release for the following paper:
 Our framework enables physically simulated robots to learn robust and generalizable interaction skills from sparse demonstrations: (top left) Learning sustained and robust dribbling from a single, brief demonstration; (top right) acquiring robust skill transitions from fragment skill demonstrations; (bottom left) generalizing book grasping to varied poses from one demonstration; and (bottom right) learning to reorientate a cube from a single grasp pose.
 
 # TODOs
-- [] Release models on locomotion task.
+- [ ] Release models on locomotion task.
 
-- [] Release models on household manipulation task.
+- [ ] Release models on household manipulation task.
 
 - [X] Release models on ballplay task.
 
