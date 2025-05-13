@@ -108,7 +108,7 @@ class HumanoidWholeBodyWithObject(HumanoidWholeBody): #metric
         return
     
     def _build_target(self, env_id, env_ptr):
-        col_group = 0 # env_id #0 #Z dual  ##Runyi
+        col_group = env_id #0 #Z dual  ##Runyi
         col_filter = 0
         segmentation_id = 0
 
