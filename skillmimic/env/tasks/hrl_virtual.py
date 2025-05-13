@@ -8,10 +8,11 @@ from isaacgym import gymapi
 from isaacgym import gymtorch
 from isaacgym.torch_utils import *
 
-from env.tasks.skillmimic1_hist import SkillMimic1BallPlayHist
+# from env.tasks.skillmimic2_hist import SkillMimic2BallPlayHist
+from env.tasks.skillmimic2 import SkillMimic2BallPlay
 
 
-class HRLVirtual(SkillMimic1BallPlayHist):
+class HRLVirtual(SkillMimic2BallPlay):
     def __init__(self, cfg, sim_params, physics_engine, device_type, device_id, headless):
 
         # self._enable_task_obs = cfg["env"]["enableTaskObs"]
@@ -29,8 +30,8 @@ class HRLVirtual(SkillMimic1BallPlayHist):
 
         if cfg["env"]["histEncoderCkpt"]:
             import copy
-            self.hist_encoder1 = copy.deepcopy(self.hist_encoder)# deepcopy 会把整个 Module 复制一份
-            self.hist_encoder1.resume_from_checkpoint("models/camready/locomotion/version_4/checkpoints/epoch=999-step=9000.ckpt")# 然后再从另一个 checkpoint 载入权重
+            self.hist_encoder1 = copy.deepcopy(self.hist_encoder)# deepcopy will copy the entire Module
+            self.hist_encoder1.resume_from_checkpoint("hist_encoder/Locomotion/hist_model.ckpt")# Then load weights from another checkpoint
                 
             self.hist_encoder1.eval()
             for p in self.hist_encoder1.parameters():
@@ -39,24 +40,24 @@ class HRLVirtual(SkillMimic1BallPlayHist):
         return
 
     def get_hist(self, env_ids, ts):
-        # 支持1个 env_id 或者2个 env_ids
-        # env_id=0 时用 hist_encoder，env_id=1 时用 hist_encoder2
-        # 假设两个 encoder 输出的维度相同
-        # 创建输出 tensor
+        # Support 1 or 2 env_ids
+        # When env_id=0 use hist_encoder, when env_id=1 use hist_encoder2
+        # Assume the output dimensions of the two encoders are the same
+        # Create output tensor
         batch_size = env_ids.numel() if isinstance(env_ids, torch.Tensor) else 1
-        out_dim = self.hist_vecotr_dim  # 假设 hist_vector_dim == hist_vector_dim2
+        out_dim = self.hist_vecotr_dim  # Assume hist_vector_dim == hist_vector_dim2
         hist_vec = torch.zeros(batch_size, out_dim, device=self.device)
 
-        # 取出对应的历史观测
+        # Extract the corresponding historical observation
         hist_batch = self._hist_obs_batch[env_ids]
 
-        # 处理 env_id == 0
+        # Handle env_id == 0
         mask0 = (env_ids == 0)
         if mask0.any():
             data0 = hist_batch[mask0]
             hist_vec[mask0] = self.hist_encoder(data0)
 
-        # 处理 env_id == 1
+        # Handle env_id == 1
         mask1 = (env_ids == 1)
         if mask1.any():
             data1 = hist_batch[mask1]
@@ -163,18 +164,18 @@ class HRLVirtual(SkillMimic1BallPlayHist):
             self.hoi_data_label_batch[0] = F.one_hot(torch.tensor(13, device=self.device),num_classes=self.condition_size).float()
             self.hoi_data_label_batch[1:] = F.one_hot(torch.tensor(10, device=self.device),num_classes=self.condition_size).float()
             self.hoi_data_label_batch[-2:] = F.one_hot(torch.tensor(0, device=self.device),num_classes=self.condition_size).float()
-        if self.progress_buf[0] == 120:
-            self.hoi_data_label_batch[0] = F.one_hot(torch.tensor(12, device=self.device),num_classes=self.condition_size).float()
-        if self.progress_buf[0] == 240:
-            self.hoi_data_label_batch[0] = F.one_hot(torch.tensor(11, device=self.device),num_classes=self.condition_size).float()
-        if self.progress_buf[0] == 340:
-            self.hoi_data_label_batch[0] = F.one_hot(torch.tensor(13, device=self.device),num_classes=self.condition_size).float()
-        if self.progress_buf[0] == 380:
-            self.hoi_data_label_batch[0] = F.one_hot(torch.tensor(12, device=self.device),num_classes=self.condition_size).float()
-        if self.progress_buf[0] == 430:
-            self.hoi_data_label_batch[0] = F.one_hot(torch.tensor(13, device=self.device),num_classes=self.condition_size).float()
-        if self.progress_buf[0] == 500:
-            self.hoi_data_label_batch[0] = F.one_hot(torch.tensor(31, device=self.device),num_classes=self.condition_size).float()
+        # if self.progress_buf[0] == 120:
+        #     self.hoi_data_label_batch[0] = F.one_hot(torch.tensor(12, device=self.device),num_classes=self.condition_size).float()
+        # if self.progress_buf[0] == 240:
+        #     self.hoi_data_label_batch[0] = F.one_hot(torch.tensor(11, device=self.device),num_classes=self.condition_size).float()
+        # if self.progress_buf[0] == 340:
+        #     self.hoi_data_label_batch[0] = F.one_hot(torch.tensor(13, device=self.device),num_classes=self.condition_size).float()
+        # if self.progress_buf[0] == 380:
+        #     self.hoi_data_label_batch[0] = F.one_hot(torch.tensor(12, device=self.device),num_classes=self.condition_size).float()
+        # if self.progress_buf[0] == 430:
+        #     self.hoi_data_label_batch[0] = F.one_hot(torch.tensor(13, device=self.device),num_classes=self.condition_size).float()
+        # if self.progress_buf[0] == 500:
+        #     self.hoi_data_label_batch[0] = F.one_hot(torch.tensor(31, device=self.device),num_classes=self.condition_size).float()
         
         run_to_stand = torch.norm(self._humanoid_root_states[1:, 0:3] - self._humanoid_root_states[0, 0:3], dim=-1) < 2.0
         stand_lable = F.one_hot(torch.tensor(0, device=self.device),num_classes=self.condition_size).float()
@@ -184,10 +185,11 @@ class HRLVirtual(SkillMimic1BallPlayHist):
             if evt.action.isdigit() and evt.value > 0:
                 idx = int(evt.action)
                 one_hot = F.one_hot(torch.tensor(idx, device=self.device),num_classes=self.condition_size).float()
-                if evt.action in actions:
-                    self.hoi_data_label_batch[0] = one_hot
-                elif evt.action in actions1:
-                    self.hoi_data_label_batch[1] = one_hot
+                self.hoi_data_label_batch[0] = one_hot
+                # if evt.action in actions:
+                #     self.hoi_data_label_batch[0] = one_hot
+                # elif evt.action in actions1:
+                #     self.hoi_data_label_batch[1] = one_hot
                 print(evt.action)
         self.reached_target = torch.norm(self._target_states[0, 0:3] - self._goal_position, dim=-1) < 0.3
 
@@ -214,11 +216,16 @@ class HRLVirtual(SkillMimic1BallPlayHist):
 
     
     def _subscribe_events_for_change_condition(self):
-        self.gym.subscribe_viewer_keyboard_event(self.viewer, gymapi.KEY_S, "011") # dribble left
-        self.gym.subscribe_viewer_keyboard_event(self.viewer, gymapi.KEY_F, "012") # dribble right
-        self.gym.subscribe_viewer_keyboard_event(self.viewer, gymapi.KEY_E, "013") # dribble forward
+        self.gym.subscribe_viewer_keyboard_event(self.viewer, gymapi.KEY_LEFT, "011") # dribble left
+        self.gym.subscribe_viewer_keyboard_event(self.viewer, gymapi.KEY_RIGHT, "012") # dribble right
+        self.gym.subscribe_viewer_keyboard_event(self.viewer, gymapi.KEY_UP, "013") # dribble forward
         self.gym.subscribe_viewer_keyboard_event(self.viewer, gymapi.KEY_W, "009") # shot
-        self.gym.subscribe_viewer_keyboard_event(self.viewer, gymapi.KEY_R, "031") # layup
+        self.gym.subscribe_viewer_keyboard_event(self.viewer, gymapi.KEY_E, "031") # layup
+        # self.gym.subscribe_viewer_keyboard_event(self.viewer, gymapi.KEY_S, "011") # dribble left
+        # self.gym.subscribe_viewer_keyboard_event(self.viewer, gymapi.KEY_F, "012") # dribble right
+        # self.gym.subscribe_viewer_keyboard_event(self.viewer, gymapi.KEY_E, "013") # dribble forward
+        # self.gym.subscribe_viewer_keyboard_event(self.viewer, gymapi.KEY_W, "009") # shot
+        # self.gym.subscribe_viewer_keyboard_event(self.viewer, gymapi.KEY_R, "031") # layup
         #############################################################################################
         self.gym.subscribe_viewer_keyboard_event(self.viewer, gymapi.KEY_DOWN, "000") # getup
         self.gym.subscribe_viewer_keyboard_event(self.viewer, gymapi.KEY_UP, "010") # run
@@ -269,20 +276,19 @@ class HRLVirtual(SkillMimic1BallPlayHist):
     def post_physics_step(self):
         super().post_physics_step()
         
-        if True:
-            # to save data for blender
-            body_ids = list(range(53))
-            self._build_frame_for_blender(self.motion_dict,
-                            self._rigid_body_pos[:, 0, :],
-                            self._rigid_body_rot[:, 0, :],
-                            self._rigid_body_pos[:, body_ids, :],
-                            #torch.cat((self._rigid_body_rot[0, :1, :], torch_utils.exp_map_to_quat(self._dof_pos[0].reshape(-1,3))),dim=0),
-                            self._rigid_body_rot[:, body_ids, :],
-                            self._target_states[0, :3],
-                            self._target_states[0, 3:7]
-                            )
-            if self.progress_buf_total == 690:
-                self._save_motion_dict(self.motion_dict, '/home/admin1/runyi/SkillMimic2_yry/blender_motion/teaser_demo.pt')
+        # # to save data for blender
+        # body_ids = list(range(53))
+        # self._build_frame_for_blender(self.motion_dict,
+        #                 self._rigid_body_pos[:, 0, :],
+        #                 self._rigid_body_rot[:, 0, :],
+        #                 self._rigid_body_pos[:, body_ids, :],
+        #                 #torch.cat((self._rigid_body_rot[0, :1, :], torch_utils.exp_map_to_quat(self._dof_pos[0].reshape(-1,3))),dim=0),
+        #                 self._rigid_body_rot[:, body_ids, :],
+        #                 self._target_states[0, :3],
+        #                 self._target_states[0, 3:7]
+        #                 )
+        # if self.progress_buf_total == 690:
+        #     self._save_motion_dict(self.motion_dict, '/home/admin1/runyi/SkillMimic2_yry/blender_motion/teaser_demo.pt')
     
 #####################################################################
 ###=========================jit functions=========================###
@@ -298,7 +304,7 @@ def compute_humanoid_reset(reset_buf, progress_buf, root_pos,
 
     if (enable_early_termination):
         has_fallen = root_pos[..., 2] < termination_heights
-        has_fallen *= (progress_buf > 1) # 本质就是 与
+        has_fallen *= (progress_buf > 1) # This is essentially an AND operation
         terminated = torch.where(has_fallen, torch.ones_like(reset_buf), terminated)
 
     # reset = torch.where(progress_buf >= envid2episode_lengths-1, torch.ones_like(reset_buf), terminated) #ZC

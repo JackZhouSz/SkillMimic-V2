@@ -9,7 +9,7 @@
             "program": "skillmimic/run.py",
             "console": "integratedTerminal",
             "justMyCode": false, 
-            "args": ["--task", "SkillMimicBallPlay", "--test",
+            "args": ["--task", "SkillMimic2BallPlay", "--test",
             // "--num_envs", "8", "--minibatch_size", "64",
             "--play_dataset",
             // "--save_images",
@@ -19,23 +19,7 @@
             "--cfg_env", "skillmimic/data/cfg/skillmimic.yaml", 
             "--cfg_train", "skillmimic/data/cfg/train/rlg/skillmimic.yaml",
             "--motion_file", //Need to change
-            // "/media/hanx/Ventoy/Uproject/STF_mocap/physhoi/data/motions/ballplay_large/misc/011pickle_walk_013.pt"
-            // "skillmimic/data/motions/CVPR_experiment/exp1/run/013_018pickle_run_4.pt",
             "skillmimic/data/motions/CVPR_experiment/ablation2/1/pickup/001_008pickle_pick_0028.pt"
-            // "skillmimic/data/motions/CVPR_experiment/exp1/layup/031_015pickle_layup_001_006.pt"
-            // "skillmimic/data/motions/CVPR_experiment/exp1_planb/layup",
-            // "skillmimic/data/motions/CVPR_experiment/exp3/run_no_object",
-            // "skillmimic/data/motions/CVPR_experiment/exp1_planb_zero0.1/lrun",
-            // "skillmimic/data/motions/BallPlay-M/turnlayup/034_015pickle_layup_013_008.pt"
-            // "skillmimic/data/motions/CVPR_experiment/ablation2/1/pickup/001_008pickle_pick_0028.pt",
-            // "skillmimic/data/motions/CVPR_experiment/exp3/run_no_object",
-            // "skillmimic/data/motions/CVPR_experiment/exp1_planb/shot/009_006pickle_dribble2shot.pt"
-            // "skillmimic/data/motions/MultiOutDegree/Spinlayup/015pickle_layup_010.pt",
-            // "skillmimic/data/motions/MultiOutDegree/Chestpass/016pickle_pass_016.pt",
-            // "skillmimic/data/motions/MultiOutDegree/Chestpass/016pickle_chestpass.pt"
-            // "skillmimic/data/motions/mocap_0330_labeled/017pickle_pick2rarm_019.pt"
-            // "skillmimic/data/motions/BallPlay-M/pick_40/001_008pickle_pick_007.pt"
-            // "--headless"
             ]
         },
         {
@@ -71,879 +55,90 @@
             }
         },
         {
-          "name": "LLC TestSucc +Objhist Reduce",
+          "name": "SkillMimic2BallPlay-Test",
           "type": "python",
           "request": "launch",
           "program": "skillmimic/run.py",
           "console": "integratedTerminal",
-          "justMyCode": false, 
-          "args": ["--task", "SkillMimicBallPlayLocalHistObjhist", "--test",
-          "--cfg_env", "skillmimic/data/cfg/skillmimic_hist_test.yaml", 
-          "--cfg_train", "skillmimic/data/cfg/train/rlg/skillmimic_objhist_reduce.yaml",
-          "--motion_file", //Need to change
-          // "skillmimic/data/motions/MultiOutDegree/Chestpass/016pickle_pass_016.pt",
-          "skillmimic/data/motions/MultiOutDegree/Spinlayup/015pickle_layup_010.pt",
-          "--hist_length", "60",
-          "--history_embedding_size", "1",
-          "--hist_ckpt", "",
-          "--num_envs", "100", 
-          "--episode_length", "200",
-          "--state_init", "60",
-          "--checkpoint", 
-          "~/Desktop/SkillMimic_08-01-57-34/nn/SkillMimic_e7000.pth",//8128_r9.2189.pth
-          // "output/SkillMimic_12-08-00-56-25/nn/SkillMimic_e2057_r11.0073.pth",
-          // "output/SkillMimic_12-05-08-03-02/nn/SkillMimic_e10000.pth",
-          // "output/SkillMimic_12-05-08-03-02/nn/SkillMimic_e4824_best.pth.pth",
-          // "~/Desktop/SkillMimic_04-19-13-42/nn/SkillMimic_e5720_best.pth.pth"
-          // "~/Desktop/SkillMimic_03-17-02-17/nn/SkillMimic_e15000.pth"
-          // "~/Desktop/SkillMimic_12-03-00-37-09/nn/SkillMimic_e20000.pth"
-          // "output/SkillMimic_12-04-17-29-01/nn/SkillMimic_e8122_best.pth.pth"
-          // "~/Desktop/SkillMimic_03-16-54-23/nn/SkillMimic.pth"
-          // "output/SkillMimic_12-04-04-36-28/nn/SkillMimic_e5000.pth",
-          // "output/SkillMimic_12-03-01-26-39/nn/SkillMimic_e15000.pth",
-          // "output/SkillMimic_12-02-08-01-10/nn/SkillMimic_e10000.pth"
-          // "--headless",
+          "justMyCode": false,
+          "args": [
+              "--test",
+              "--task", "SkillMimic2BallPlay",
+              "--num_envs", "50",
+              "--cfg_env", "skillmimic/data/cfg/skillmimic_test.yaml",
+              "--cfg_train", 
+              "skillmimic/data/cfg/train/rlg/skillmimic.yaml",
+              "--history_embedding_size", "3",
+              "--hist_length", "60",
+              "--hist_ckpt", 
+              "hist_encoder/BallPlay/hist_model.ckpt",
+              // "hist_encoder/Locomotion/hist_model.ckpt",
+              "--motion_file", 
+              "skillmimic/data/motions/BallPlay/run",
+              // "skillmimic/data/motions/Locomotion",
+              "--state_init", "random",
+              "--episode_length", "600",
+              "--checkpoint", 
+              "models/ballplay/SkillMimic-V2/model.pth",
+              // "models/Locomotion/model.pth"
+              "--switch_motion_file", "skillmimic/data/motions/BallPlay/layup",
           ]
         },
         {
-          "name": "SkillMimic",
+          "name": "SkillMimic2BallPlay-Train",
           "type": "python",
           "request": "launch",
           "program": "skillmimic/run.py",
           "console": "integratedTerminal",
-          "justMyCode": false, 
-          "args": ["--task", "SkillMimic1BallPlay60Hist",
-          "--num_envs", "8", "--minibatch_size", "64",
-          "--episode_length", "60",
-          "--cfg_env", "skillmimic/data/cfg/skillmimic.yaml", 
-          "--cfg_train", "skillmimic/data/cfg/train/rlg/skillmimic.yaml",
-          "--motion_file", //Need to change
-          "skillmimic/data/motions/CVPR_experiment/exp3/getup",
-          // "skillmimic/data/motions/CVPR_experiment/exp1_planb_noise0.05",
-          // "skillmimic/data/motions/Sigraph_experiment/ablation3/turnlayup",
-          // "skillmimic/data/motions/DataEfficiency_pick/1",
-          // "skillmimic/data/motions/MultiOutDegree/Setshot",
-          // "--headless"
-                // "--rl_device", "cpu",//"cuda:0",
-                // "--sim_device", "cpu",//"cuda:0",
-                // "--pipeline", "cpu",//"gpu",
+          "justMyCode": false,
+          "args": [
+              "--task", "SkillMimic2BallPlay",
+              "--episode_length", "60",
+              "--cfg_env", "skillmimic/data/cfg/skillmimic.yaml",
+              "--cfg_train", "skillmimic/data/cfg/train/rlg/skillmimic.yaml",
+              "--motion_file", "skillmimic/data/motions/BallPlay",
+              "--reweight",
+              "--reweight_alpha", "1.0",
+              "--state_init_random_prob", "0.1",
+              "--state_switch_prob", "0.1",
+              "--state_search_to_align_reward",
+              "--graph_file", "skillmimic/data/preprocess/ballplay.pkl",
+              "--enable_buffernode",
+              "--hist_length", "60",
+              "--history_embedding_size", "3",
+              "--hist_ckpt", "hist_encoder/BallPlay/hist_model.ckpt",
+              "--headless"
           ]
         },
         {
-          "name": "SkillMimic Test",
+          "name": "Matchup",
           "type": "python",
           "request": "launch",
           "program": "skillmimic/run.py",
           "console": "integratedTerminal",
-          "justMyCode": false, 
-          "args": ["--test", "--task", "SkillMimic1BallPlay60Hist", //
-
-                "--cfg_env", "skillmimic/data/cfg/skillmimic_test.yaml", 
-                "--cfg_train", "skillmimic/data/cfg/train/rlg/skillmimic.yaml", //_explore
-                "--motion_file", //Need to change
-                "skillmimic/data/motions/CVPR_experiment/exp1_planb/shot", //_noise0.01
-                  // "skillmimic/data/motions/Sigraph_experiment/ablation3/turnlayup",
-                  // "skillmimic/data/motions/Sigraph_experiment/ablation3/Chestpass",
-                  // "skillmimic/data/motions/Sigraph_experiment/ablation3/Jumpshot",
-                  // "skillmimic/data/motions/Sigraph_experiment/ablation3/Setshot",
-                  // "skillmimic/data/motions/DataEfficiency_pick/1",
-                  // "skillmimic/data/motions/MultiOutDegree/Setshot",
-                  // "skillmimic/data/motions/CVPR_experiment/exp3",
-                  // "skillmimic/data/motions/CVPR_experiment/exp3/getup",
-                  // "skillmimic/data/motions/CVPR_experiment/exp3/run_no_object",
-                // "--headless",
-
-                "--NR",
-                "--headless",
-                "--num_envs", "500",
-                "--state_init", "random",
-                "--episode_length", "60",
-
-                "--checkpoint",
-                // "~/Desktop/sm1@exp1_planb/nn/SkillMimic.pth",
-                "/mnt/jfs/qihan/SkillMimic2_yry/output/SkillMimic_04-07-08-34-25/nn/SkillMimic.pth",
-                  // "output/SkillMimic_04-14-09-37-11/nn/SkillMimic.pth",
-                // "/mnt/jfs/qihan/SkillMimic2_yry/output/SkillMimic_15-20-33-37/nn/SkillMimic_e20000.pth",
-                // "~/Desktop/SkillMimic_12-17-11-46-15/nn/SkillMimic_e19911_r37.0083.pth",
-                // "~/Desktop/SkillMimic_15-20-33-37/nn/SkillMimic.pth"
-                // "~/Desktop/SkillMimic_11-02-27-28/nn/SkillMimic_e10000.pth",
-                // "~/Desktop/SkillMimic_01-11-02-00-48/nn/SkillMimic_e5000.pth"
-
-                // "--switch_motion_file",
-                // "skillmimic/data/motions/CVPR_experiment/exp3/getup",
-                // "skillmimic/data/motions/CVPR_experiment/exp3/run_no_object",
-                // "--save_images",
-          ]
-        },
-        {
-          "name": "SkillMimic++",
-          "type": "python",
-          "request": "launch",
-          "program": "skillmimic/run.py",
-          "console": "integratedTerminal",
-          "justMyCode": false, 
-          "args": ["--task", "SkillMimic2BallPlayUnified",
-                  // "--num_envs", "8", "--minibatch_size", "64",
-                  "--num_envs", "4096", "--minibatch_size", "32768",
-                  "--episode_length", "60",
-                  "--cfg_env", "skillmimic/data/cfg/skillmimic.yaml", 
-                  "--cfg_train", "skillmimic/data/cfg/train/rlg/skillmimic.yaml",
-                  "--motion_file", //Need to change
-                  "skillmimic/data/motions/CVPR_experiment/exp3",
-                  "--headless",
-                  "--state_switch_prob", "0.1",
-                  "--state_init_random_prob", "0.1",
-                  "--state_search_to_align_reward",
-                  "--graph_file",
-                  "skillmimic/data/preprocess/exp3.pkl"
-          ]
-      },
-      {
-        "name": "SkillMimic++ Test",
-        "type": "python",
-        "request": "launch",
-        "program": "skillmimic/run.py",
-        "console": "integratedTerminal",
-        "justMyCode": false, 
-        "args": ["--task", "SkillMimic2BallPlayUnified", "--test",
-                "--num_envs", "100",
-                "--state_init", "random",
-                "--episode_length", "600",
-
-                "--cfg_env", "skillmimic/data/cfg/skillmimic_test.yaml", 
-                "--cfg_train", "skillmimic/data/cfg/train/rlg/skillmimic.yaml",
-
-                "--motion_file", //Need to change
-                  // "skillmimic/data/motions/CVPR_experiment/exp3",
-                  "skillmimic/data/motions/CVPR_experiment/exp3/run_no_object",
-                  // "skillmimic/data/motions/CVPR_experiment/exp3/getup",
-                // "--switch_motion_file",
-                  // "skillmimic/data/motions/CVPR_experiment/exp3/getup",
-                  // "skillmimic/data/motions/CVPR_experiment/exp3/run_no_object",
-                
-                "--checkpoint", 
-                  // "output/SkillMimic_12-29-18-09-44/nn/SkillMimic_e20000.pth",
-                  // "~/Desktop/SkillMimic_12-17-11-46-15/nn/SkillMimic_e19911_r37.0083.pth", //
-                  // "~/Desktop/SkillMimic_17-19-26-34/nn/SkillMimic_e15506_r30.6636.pth", //+
-                  // "output/SkillMimic_12-17-19-17-20/nn/SkillMimic_e16594_r31.4361.pth", //++
-                  // "output/SkillMimic_12-29-18-09-44/nn/SkillMimic_e5245_r28.4130.pth", //++ offline 
-                  // "output/SkillMimic_12-29-18-09-44/nn/SkillMimic_e4931_r27.1659.pth"
-                  // "output/SkillMimic_12-29-18-09-44/nn/SkillMimic_e15000.pth"
-                // "--headless",
-        ]
-      },
-      {
-        "name": "SkillMimic++++ (w/o Hist)",
-        "type": "python",
-        "request": "launch",
-        "program": "skillmimic/run.py",
-        "console": "integratedTerminal",
-        "justMyCode": false, 
-        "args": ["--task", "SkillMimic2BallPlayRand", 
-                // "--num_envs", "8", "--minibatch_size", "64",
-                // "--num_envs", "4096", "--minibatch_size", "32768",
-                // "--num_envs", "3072", "--minibatch_size", "24576",
-                "--num_envs", "2048", "--minibatch_size", "16384",
-                // "--num_envs", "256", "--minibatch_size", "2048",
-                "--episode_length", "60",
-                // "--state_init", "41",
-                "--cfg_env", "skillmimic/data/cfg/skillmimic.yaml", 
-                "--cfg_train", "skillmimic/data/cfg/train/rlg/skillmimic.yaml",
-                "--motion_file", //Need to change
-                  "skillmimic/data/motions/CVPR_experiment/exp3",
-                "--headless",
-
-                "--reweight", "--reweight_alpha", "1.0",
-                "--disable_time_reweight",
-                "--state_switch_prob", "0.1",
-                "--state_init_random_prob", "0.1",
-                "--state_search_to_align_reward",
-                "--graph_file",
-                  "skillmimic/data/preprocess/exp3.pkl",
-                "--enable_buffernode", 
-
-                // "--resume_from", 
-                //   "~/Desktop/SkillMimic_16-09-43-45/nn/SkillMimic.pth",
-                  // "output/SkillMimic_01-10-11-05-34/nn/SkillMimic_e2500.pth",
-
-                // "--rl_device", "cpu",//"cuda:0",
-                // "--sim_device", "cpu",//"cuda:0",
-                // "--pipeline", "cpu",//"gpu",
-
-        ]
-      },
-      {
-        "name": "SkillMimic++++ (w/o Hist) Test",
-        "type": "python",
-        "request": "launch",
-        "program": "skillmimic/run.py",
-        "console": "integratedTerminal",
-        "justMyCode": false, 
-        "args": ["--test", "--task", "SkillMimic2BallPlayRand", 
-                "--cfg_env", "skillmimic/data/cfg/skillmimic_test.yaml", 
-                "--cfg_train", "skillmimic/data/cfg/train/rlg/skillmimic.yaml",
-                "--motion_file", //Need to change
-                  // "skillmimic/data/motions/CVPR_experiment/exp3",
-                  // "skillmimic/data/motions/CVPR_experiment/exp3/getup",
-                  "skillmimic/data/motions/CVPR_experiment/exp3/run_no_object",
-                // "--headless",
-
-                // "--reweight", "--reweight_alpha", "1.0",
-                // "--state_switch_prob", "0.1",
-                // "--state_init_random_prob", "0.1",
-                // "--state_search_to_align_reward",
-                // "--graph_file",
-                //   "skillmimic/data/preprocess/exp3.pkl",
-
-                "--num_envs", "100",
-                "--state_init", "2",
-                "--episode_length", "600",
-                // "--NR",
-                // "--enable_buffernode", 
-
-                "--checkpoint",
-                  "~/Desktop/SkillMimic_21-22-05-59/nn/SkillMimic.pth",
-
-
-                // "--switch_motion_file",
-                // "skillmimic/data/motions/CVPR_experiment/exp3/getup",
-                // "skillmimic/data/motions/CVPR_experiment/exp3/run_no_object",
-                // "--save_images",
-        ]
-      },
-      {
-        "name": "SkillMimic+++++",
-        "type": "python",
-        "request": "launch",
-        "program": "skillmimic/run.py",
-        "console": "integratedTerminal",
-        "justMyCode": false, 
-        "args": ["--task", "SkillMimic2BallPlayHist", 
-                "--max_epochs", "200",
-                "--num_envs", "8", "--minibatch_size", "64",
-                // "--num_envs", "4096", "--minibatch_size", "32768",
-                // "--num_envs", "3072", "--minibatch_size", "24576",
-                // "--num_envs", "2048", "--minibatch_size", "16384",
-                // "--num_envs", "256", "--minibatch_size", "2048",
-                "--episode_length", "60",
-                // "--state_init", "2",
-                "--cfg_env", "skillmimic/data/cfg/skillmimic.yaml", 
-                "--cfg_train", "skillmimic/data/cfg/train/rlg/skillmimic.yaml", // _explore
-                "--motion_file", //Need to change
-                  // "skillmimic/data/motions/CVPR_experiment/exp1_planb_masked_noise0.05/layup", 
-                  // "skillmimic/data/motions/CVPR_experiment/exp1_planb_masked_noise0.05",
-                  "skillmimic/data/motions/CVPR_experiment/exp1_planb_noise0.05",
-                  // "skillmimic/data/motions/CVPR_experiment/exp1_planb",
-                  // "skillmimic/data/motions/CVPR_experiment/exp3",
-                  // "skillmimic/data/motions/CVPR_experiment/exp1/run/013_018pickle_run_4.pt",
-                  // "skillmimic/data/motions/CVPR_experiment/exp3/run_no_object",
-                // "--headless",
-
-                // "--reweight", "--reweight_alpha", "1.0",
-                // "--disable_time_reweight",
-                // "--state_init_random_prob", "1.0",
-                // "--state_switch_prob", "0.1",
-                // "--state_search_to_align_reward",
-                // "--graph_file",
-                //   "skillmimic/data/preprocess/table4_masked-5.pkl",
-                  // "skillmimic/data/preprocess/exp3.pkl",
-                "--enable_buffernode", 
-                "--hist_length", "60",
-                "--history_embedding_size", "3",
-                "--hist_ckpt",
-                  // "output/tb_logs/ComprehensiveR-Unified-60-woNoise-exp3/checkpoints/epoch=787-train_loss=0.000180.ckpt",
-                  "output/tb_logs/comprehensive_model/exp1_planb_noise0.05/checkpoints/epoch=999-step=4000.ckpt",
-                  // "tb_logs/ComprehensiveR-60-woNoise-exp3/checkpoints/epoch=983-train_loss=0.000275.ckpt",
-                  // "output/tb_logs/comprehensive_model/exp3_60_local_noisy/checkpoints/epoch=999-step=17000.ckpt",
-
-                "--resume_from", 
-                  // "output/SkillMimic_04-09-16-36-57/nn/SkillMimic_e991_r0.6386.pth",
-                  "models/CVPR_exp/exp3/exp3_hist60_noisyinit_randskill/nn/SkillMimic.pth"
-                  // "/media/hanx/Ventoy/Uproject/SkillMimic/skillmimic/data/models/mixedskills/nn/skillmimic_llc.pth",
-                //   "~/Desktop/SkillMimic_21-18-27-50/nn/SkillMimic.pth",
-                //   "~/Desktop/SkillMimic_16-09-43-45/nn/SkillMimic.pth",
-                  // "output/SkillMimic_01-10-11-05-34/nn/SkillMimic_e2500.pth",
-
-                // "--rl_device", "cpu",//"cuda:0",
-                // "--sim_device", "cpu",//"cuda:0",
-                // "--pipeline", "cpu",//"gpu",
-
-        ]
-      },
-      {
-        "name": "SkillMimic+++++ Test",
-        "type": "python",
-        "request": "launch",
-        "program": "skillmimic/run.py",
-        "console": "integratedTerminal",
-        "justMyCode": false, 
-        "args": ["--test", "--task", "SkillMimic2BallPlayHist", 
-                "--cfg_env", "skillmimic/data/cfg/skillmimic_test.yaml", 
-                "--cfg_train", "skillmimic/data/cfg/train/rlg/skillmimic.yaml", //_explore
-                "--motion_file", //Need to change
-                // "skillmimic/data/motions/CVPR_experiment/exp1_planb_noise0.05",
-                  // "skillmimic/data/motions/CVPR_experiment/exp1_planb_masked_noise0.03/run",
-                  // "skillmimic/data/motions/CVPR_experiment/exp1/run",
-                  // "skillmimic/data/motions/CVPR_experiment/exp1_planb_masked_noise0.01",
-                  // "skillmimic/data/motions/CVPR_experiment/exp1_planb",
-                  "skillmimic/data/motions/CVPR_experiment/exp1_planb/shot",
-                  // "skillmimic/data/motions/CVPR_experiment/exp1_planb/rrun",
-                  // "skillmimic/data/motions/CVPR_experiment/exp1_planb/run",
-                  // "skillmimic/data/motions/CVPR_experiment/exp1_planb/shot",
-                  // "skillmimic/data/motions/CVPR_experiment/exp1_planb/layup",
-                  // "skillmimic/data/motions/CVPR_experiment/exp3",
-                  // "skillmimic/data/motions/CVPR_experiment/exp3/getup",
-                  // "skillmimic/data/motions/CVPR_experiment/exp3/run_no_object",
-                  // "skillmimic/data/motions/CVPR_experiment/exp3/run_no_object/010_008pickle_runOffBall_004.pt",
-                  // "skillmimic/data/motions/CVPR_experiment/exp3/run_no_object/010_022pickle_runOffBall_002.pt",
-
-                // "--reweight", "--reweight_alpha", "1.0",
-                // "--state_switch_prob", "0.1",
-                // "--state_init_random_prob", "1.0",
-                // "--state_search_to_align_reward",
-                // "--graph_file",
-                //   "skillmimic/data/preprocess/exp3.pkl",
-
-                "--hist_length", "60",
-                "--history_embedding_size", "3",
-                "--hist_ckpt", 
-                "output/tb_logs/comprehensive_model/exp1_planb/checkpoints/epoch=999-step=4000.ckpt",
-                // "output/camready/version_4/checkpoints/epoch=999-step=9000.ckpt",
-                
-                //   "output/tb_logs/ComprehensiveR-Unified-60-woNoise-exp3/checkpoints/epoch=787-train_loss=0.000180.ckpt",
-                  // "output/tb_logs/comprehensive_model/exp1_planb_noise0.01/checkpoints/epoch=999-step=4000.ckpt",
-                  // "output/tb_logs/comprehensive_model/exp1_planb/checkpoints/epoch=999-step=4000.ckpt",
-                  // "tb_logs/ComprehensiveR-60-woNoise-exp3/checkpoints/epoch=983-train_loss=0.000275.ckpt",
-                  // "output/tb_logs/comprehensive_model/exp3_60_local_noisy/checkpoints/epoch=999-step=17000.ckpt",
-                
-                // "--headless",
-                "--num_envs", "50",
-                "--state_init", "random",
-                "--episode_length", "600",
-                // "--NR",
-                // "--enable_buffernode", 
-
-                "--checkpoint",
-                "models/camready/playball/SkillMimic_e20000.pth",
-                // "output/SkillMimic_04-09-23-24-55/nn/SkillMimic.pth",
-                // "output/SkillMimic_01-21-00-04-43/nn/SkillMimic.pth",
-                // "/mnt/jfs/qihan/SkillMimic2_yry/output/SkillMimic_04-14-10-16-58/nn/SkillMimic.pth",
-                // "output/SkillMimic_04-07-08-39-47/nn/SkillMimic.pth"
-                // "/mnt/jfs/qihan/SkillMimic2_yry/output/SkillMimic_04-04-23-10-04/nn/SkillMimic_e20000.pth",
-                // "models/CVPR_exp/exp3/exp3_hist60_noisyinit_randskill/nn/SkillMimic.pth",
-                  // "output/SkillMimic_03-01-20-36-40/nn/SkillMimic_e15000.pth"
-                  // "~/Desktop/SkillMimic_12-17-21-49-51/nn/SkillMimic_e18397_r123.1945.pth", //DM
-                  // "~/Desktop/SkillMimic_23-16-02-28/nn/SkillMimic_e3637_r110.3081.pth", //DM+NI e5000
-                  // "~/Desktop/SkillMimic_23-14-03-06/nn/SkillMimic_e11250.pth", //DM + ours e500 0e10932_r112.8970
-                  // "~/Desktop/SkillMimic_23-16-04-26/nn/SkillMimic_e5000.pth", //SM+NI
-                  // "~/Desktop/SkillMimic_20-21-47-12/nn/SkillMimic_e20000.pth", //table4-5
-                  // "output/SkillMimic_01-21-00-04-43/nn/SkillMimic.pth" //table4-2
-                  // "~/Desktop/SkillMimic_20-21-16-50/nn/SkillMimic_e20000.pth", //table4-1
-                  // "~/Desktop/SkillMimic_21-22-05-59/nn/SkillMimic_e20000.pth", //locomotion-nohist
-                  // "~/Desktop/SkillMimic_21-18-27-50/nn/SkillMimic_e20000.pth", //locomotion-noisyhist
-                  // "~/Desktop/SkillMimic_22-17-57-54/nn/SkillMimic_e20000.pth", //final
-                  // "~/Desktop/SkillMimic_12-17-11-46-15/nn/SkillMimic_e19911_r37.0083.pth",
-                  // "~/Desktop/SkillMimic_17-19-26-34/nn/SkillMimic_e15506_r30.6636.pth", //+
-                  // "~/Desktop/SkillMimic_21-12-14-04/nn/SkillMimic_e5000.pth",
-                  // "~/Desktop/SkillMimic_20-23-51-45/nn/SkillMimic_e5000.pth",  //sm2 w/o buffernode
-                  // "~/Desktop/SkillMimic_20-23-50-36/nn/SkillMimic_e5000.pth",  //sm2 w/o reweight
-                  // "~/Desktop/SkillMimic_20-23-49-17/nn/SkillMimic_e6327_r22.0211.pth",  //sm2 all SkillMimic_e5000.pth
-                // "~/Desktop/SkillMimic_16-09-43-45/nn/SkillMimic.pth", //6000+14000=20000
-                // "~/Desktop/SkillMimic_14-17-29-51/nn/SkillMimic.pth",
-                // "~/Desktop/SkillMimic_14-16-54-29/nn/SkillMimic.pth",
-                // "~/Desktop/SkillMimic_14-15-38-58/nn/SkillMimic_e12500.pth", //SkillMimic_e8398_r33.4175.pth SkillMimic_e6769_r32.6298.pth
-                // "~/Desktop/SkillMimic_15-19-38-41/nn/SkillMimic_e15_r29.0861.pth", //SkillMimic_e5000.pth
-                // "output/SkillMimic_01-14-15-02-02/nn/SkillMimic_e5000.pth"
-                // "output/SkillMimic_01-10-18-58-18/nn/SkillMimic_e5000.pth",
-                // "output/SkillMimic_01-10-18-58-18/nn/SkillMimic_e3226_r39.0853.pth"
-                // "output/SkillMimic_01-10-18-58-18/nn/SkillMimic_e12500.pth",
-                // "output/SkillMimic_01-10-11-05-34/nn/SkillMimic_e2500.pth"
-
-                // "--switch_motion_file",
-                // "skillmimic/data/motions/CVPR_experiment/exp1_planb/layup",
-                // "skillmimic/data/motions/CVPR_experiment/exp3/getup",
-                // "skillmimic/data/motions/CVPR_experiment/exp3/run_no_object",
-                // "--save_images",
-        ]
-      },
-      {
-          "name": "LLC Test +NoisyInit(withStateSearch)",
-          "type": "python",
-          "request": "launch",
-          "program": "skillmimic/run.py",
-          "console": "integratedTerminal",
-          "justMyCode": false, 
-          "args": ["--task", "SkillMimicBallPlayNoisyInit", "--test",
-          // "--num_envs", "8", "--minibatch_size", "64",
-          "--episode_length", "60",
-          "--cfg_env", "skillmimic/data/cfg/skillmimic_noisyinit.yaml", 
-          "--cfg_train", "skillmimic/data/cfg/train/rlg/skillmimic.yaml",
-          "--motion_file", //Need to change
-          "skillmimic/data/motions/MultiOutDegree/Chestpass/016pickle_pass_016.pt",
-          "--num_envs", "20", 
-          "--episode_length", "2000",
-          "--state_init", "2",
-          "--checkpoint", 
-          "~/Desktop/SkillMimic_10-02-24-04_ab1(ni)_chestpass_r12@e5k_r10@e20k/nn/SkillMimic_e20000.pth"
-          ]
-      },
-      {
-          "name": "LLC Train SM1",
-          "type": "python",
-          "request": "launch",
-          "program": "skillmimic/run.py",
-          "console": "integratedTerminal",
-          "justMyCode": false, 
-          "args": ["--task", "SkillMimicBallPlay",
-          // "--num_envs", "8", "--minibatch_size", "64",
-          "--episode_length", "60",
-          "--cfg_env", "skillmimic/data/cfg/skillmimic.yaml", 
-          "--cfg_train", "skillmimic/data/cfg/train/rlg/skillmimic.yaml",
-          "--motion_file", //Need to change
-          "skillmimic/data/motions/DataEfficiency_pick/1",
-          // "skillmimic/data/motions/MultiOutDegree/Setshot",
-          "--headless"
-          ]
-      },
-      {
-          "name": "LLC test SM1",
-          "type": "python",
-          "request": "launch",
-          "program": "skillmimic/run.py",
-          "console": "integratedTerminal",
-          "justMyCode": false, 
-          "args": ["--task", "SkillMimicBallPlay", "--test",
-          "--cfg_env", "skillmimic/data/cfg/skillmimic.yaml", 
-          "--cfg_train", "skillmimic/data/cfg/train/rlg/skillmimic.yaml",
-          "--motion_file", //Need to change
-          "skillmimic/data/motions/MultiOutDegree/Jumpshot",
-          "--num_envs", "20", 
-          "--episode_length", "2000",
-          "--state_init", "2",
-          "--checkpoint",
-          "~/Desktop/SkillMimic_10-06-20-17_jumpshot_sm1_r26@e20k/nn/SkillMimic_e15000.pth"
-          ]
-      },
-      {
-          "name": "LLC testSucc SM1",
-          "type": "python",
-          "request": "launch",
-          "program": "skillmimic/run.py",
-          "console": "integratedTerminal",
-          "justMyCode": false, 
-          "args": ["--task", "SkillMimicBallPlay", "--test",
-          "--cfg_env", "skillmimic/data/cfg/skillmimic_test.yaml", 
-          "--cfg_train", "skillmimic/data/cfg/train/rlg/skillmimic.yaml",
-          "--motion_file", //Need to change
-          "skillmimic/data/motions/MultiOutDegree/Chestpass/016pickle_chestpass.pt",
-          // "skillmimic/data/motions/DataEfficiency_pick/1",
-          // "skillmimic/data/motions/MultiOutDegree/Jumpshot",
-          // "skillmimic/data/motions/MultiOutDegree/Setshot",
-          "--num_envs", "100", 
-          "--episode_length", "200",
-          "--state_init", "2",
-          "--checkpoint",
-          "/home/hanx/Desktop/SkillMimic_11-03-53-39_chestpass_sm1_r13@e20k/nn/SkillMimic_e20000.pth",
-          // "/home/hanx/Desktop/SkillMimic_10-21-47-09_pick10_SM1_r21@e20k/nn/SkillMimic.pth",
-          // "/home/hanx/Desktop/SkillMimic_10-21-46-26_pick4_SM1_r25@e20k/nn/SkillMimic.pth",
-          // "/home/hanx/Desktop/SkillMimic_10-21-45-29_pick1_SM1_r15@e20k/nn/SkillMimic.pth",
-          // "~/Desktop/SkillMimic_10-06-20-17_jumpshot_sm1_r26@e20k/nn/SkillMimic.pth",
-          // "~/Desktop/SkillMimic_12-04-35-39_setshot_sm1_r12@e20k/nn/SkillMimic.pth",
-          // "--headless"
-          ]
-      },
-      {
-        "name": "LLC Train SM2",
-        "type": "python",
-        "request": "launch",
-        "program": "skillmimic/run.py",
-        "console": "integratedTerminal",
-        "justMyCode": false, 
-        "args": ["--task", "SkillMimic2BallPlay",
-        // "--num_envs", "8", "--minibatch_size", "64",
-        "--episode_length", "60",
-        "--cfg_env", "skillmimic/data/cfg/skillmimic.yaml", 
-        "--cfg_train", "skillmimic/data/cfg/train/rlg/skillmimic.yaml",
-        "--motion_file", //Need to change
-        "skillmimic/data/motions/DataEfficiency_pick/1",
-        // "skillmimic/data/motions/MultiOutDegree/Setshot",
-        "--headless"
-        ]
-      },
-      {
-        "name": "Training AMP wDR Run",
-        "type": "python",
-        "request": "launch",
-        "program": "${workspaceFolder}/skillmimic/run.py",
-        "console": "integratedTerminal",
-        "justMyCode": false,
-        "args": [
-            "--task", "SkillMimicAMPLocomotion",
-            "--num_envs", "8", "--minibatch_size", "64",
-            "--state_init_random_prob", "0.1",
-            "--state_switch_prob", "0.",
-            "--episode_length", "60",
-            "--cfg_env", "skillmimic/data/cfg/amp.yaml",
-            "--cfg_train", "skillmimic/data/cfg/train/rlg/amp.yaml",
-            "--motion_file", 
-            // "skillmimic/data/motions/CVPR_experiment/exp3",
-            "skillmimic/data/motions/CVPR_experiment/exp3/run_no_object",
-            // "skillmimic/data/motions/CVPR_experiment/exp3/getup",
-            // "--llc_checkpoint", "ase/data/models/ase_llc_reallusion_sword_shield.pth",
-            // "--headless"
-        ],
-      },
-      {
-        "name": "Testing AMP wDR Run",
-        "type": "python",
-        "request": "launch",
-        "program": "${workspaceFolder}/skillmimic/run.py",
-        "console": "integratedTerminal",
-        "justMyCode": false,
-        "args": [ "--test", "--task", "SkillMimicAMPLocomotion4Eval",
-            "--cfg_env", "skillmimic/data/cfg/amp_test.yaml",
-            "--cfg_train", "skillmimic/data/cfg/train/rlg/amp.yaml",
-            "--motion_file", 
-              // "skillmimic/data/motions/CVPR_experiment/exp3",
-              // "skillmimic/data/motions/CVPR_experiment/exp3/getup",
-              "skillmimic/data/motions/CVPR_experiment/exp3/run_no_object",
-              // "skillmimic/data/motions/CVPR_experiment/exp3/run_no_object/010_008pickle_runOffBall_004.pt",
-              // "skillmimic/data/motions/CVPR_experiment/exp3/run_no_object/010_022pickle_runOffBall_002.pt",
-              // "--llc_checkpoint", "ase/data/models/ase_llc_reallusion_sword_shield.pth",
-              // "--switch_motion_file",
-              // "skillmimic/data/motions/CVPR_experiment/exp3/getup",
-            "--headless",
-
-            "--num_envs", "1000", 
-            "--episode_length", "600",
-            "--state_init", "random",
-            // "--NR",
-
-            // "--state_init_random_prob", "1.0",
-            // "--state_switch_prob", "0.0",
-
-            "--checkpoint", 
-              // "~/Desktop/SkillmimicAMP_12-17-02-55-03/nn/SkillmimicAMP_e20000.pth", //AMP getup
-              "~/Desktop/SkillmimicAMP_12-17-02-59-37/nn/SkillmimicAMP_e20000.pth", //AMP run
-              // "~/Desktop/SkillmimicAMP_12-24-03-10-01/nn/SkillmimicAMP_e10000.pth"
-              // "~/Desktop/SkillmimicAMP_12-17-02-59-37/nn/SkillmimicAMP_e5000.pth"
-              // "~/Desktop/SkillmimicAMP_12-10-19-36-19/nn/SkillmimicAMP_e10000.pth"
-
-
-              "--switch_motion_file",
-              // "skillmimic/data/motions/CVPR_experiment/exp3/run_no_object",
-              "skillmimic/data/motions/CVPR_experiment/exp3/getup",
-        ],
-      },
-      {
-        "name": "Training AMP wDR Getup",
-        "type": "python",
-        "request": "launch",
-        "program": "${workspaceFolder}/skillmimic/run.py",
-        "console": "integratedTerminal",
-        "justMyCode": false,
-        "args": [
-            "--task", "SkillMimicAMPGetup",
-            "--num_envs", "16", "--minibatch_size", "128",
-            "--state_init_random_prob", "0.",
-            "--state_switch_prob", "0.",
-            "--episode_length", "60",
-            "--cfg_env", "skillmimic/data/cfg/skillmimic_amp.yaml",
-            "--cfg_train", "skillmimic/data/cfg/train/rlg/skillmimic_amp.yaml",
-            "--motion_file", 
-            // "skillmimic/data/motions/CVPR_experiment/exp3",
-            // "skillmimic/data/motions/CVPR_experiment/exp3/run_no_object",
-            "skillmimic/data/motions/CVPR_experiment/exp3/getup",
-            // "--llc_checkpoint", "ase/data/models/ase_llc_reallusion_sword_shield.pth",
-            // "--headless"
-        ],
-      },
-      {
-        "name": "Testing AMP wDR Getup",
-        "type": "python",
-        "request": "launch",
-        "program": "${workspaceFolder}/skillmimic/run.py",
-        "console": "integratedTerminal",
-        "justMyCode": false,
-        "args": [
-            "--task", "SkillMimicAMPGetup", "--test",
-            "--num_envs", "100",
-            "--state_init", "random",
-            "--state_init_random_prob", "0.",
-            "--state_switch_prob", "0.",
-            "--episode_length", "350",
-            "--cfg_env", "skillmimic/data/cfg/amp_test.yaml",
-            "--cfg_train", "skillmimic/data/cfg/train/rlg/amp.yaml",
-            "--motion_file", 
-            // "skillmimic/data/motions/CVPR_experiment/exp3",
-            "skillmimic/data/motions/CVPR_experiment/exp3/getup",
-            // "--llc_checkpoint", "ase/data/models/ase_llc_reallusion_sword_shield.pth",
-            "--switch_motion_file",
-            "skillmimic/data/motions/CVPR_experiment/exp3/run_no_object",
-            // "--headless",
-            "--checkpoint", 
-            "~/Desktop/SkillmimicAMP_12-17-02-55-03/nn/SkillmimicAMP_e10000.pth",
-            "--projtype", "Mouse"
-        ],
-      },
-      {
-        "name": "Training DeepMimic",
-        "type": "python",
-        "request": "launch",
-        "program": "${workspaceFolder}/skillmimic/run.py",
-        "console": "integratedTerminal",
-        "justMyCode": false,
-        "args": [
-            "--task", "DeepMimicBallPlay",
-            "--num_envs", "8", "--minibatch_size", "64",
-            "--state_init_random_prob", "0.1",
-            "--state_switch_prob", "0.1",
-            "--state_search_to_align_reward",
-            "--episode_length", "60",
-            "--cfg_env", "skillmimic/data/cfg/deepmimic.yaml",
-            "--cfg_train", "skillmimic/data/cfg/train/rlg/skillmimic.yaml",
-            "--motion_file", 
-            "skillmimic/data/motions/CVPR_experiment/exp3",
-            // "skillmimic/data/motions/CVPR_experiment/exp3/run_no_object",
-            // "skillmimic/data/motions/CVPR_experiment/exp3/getup",
-            // "--llc_checkpoint", "ase/data/models/ase_llc_reallusion_sword_shield.pth",
-            // "--headless"
-        ],
-      },
-      {
-        "name": "Testing DeepMimic",
-        "type": "python",
-        "request": "launch",
-        "program": "${workspaceFolder}/skillmimic/run.py",
-        "console": "integratedTerminal",
-        "justMyCode": false,
-        "args": [
-            "--task", "DeepMimicBallPlay", "--test",
-            "--episode_length", "350",
-            "--num_envs", "100",
-            "--state_init", "random",
-            "--state_init_random_prob", "0.",
-            "--state_switch_prob", "0.",
-            // "--state_search_to_align_reward",
-            "--cfg_env", "skillmimic/data/cfg/skillmimic_test.yaml",
-            "--cfg_train", "skillmimic/data/cfg/train/rlg/skillmimic.yaml",
-            "--motion_file", 
-            // "skillmimic/data/motions/CVPR_experiment/exp3",
-            // "skillmimic/data/motions/CVPR_experiment/exp3/run_no_object",
-            "skillmimic/data/motions/CVPR_experiment/exp3/getup",
-            // "--llc_checkpoint", "ase/data/models/ase_llc_reallusion_sword_shield.pth",
-            // "--switch_motion_file",
-            // "skillmimic/data/motions/CVPR_experiment/exp3/getup",
-            // "skillmimic/data/motions/CVPR_experiment/exp3/run_no_object",
-            "--checkpoint",
-            // "~/Desktop/SkillMimic_17-21-55-12/nn/SkillMimic_e19799_r114.8478.pth", //++
-            // "~/Desktop/SkillMimic_17-21-53-24/nn/SkillMimic_e18022_r115.3926.pth", //+
-            "~/Desktop/SkillMimic_12-17-21-49-51/nn/SkillMimic_e18397_r123.1945.pth", //
-            // "--headless",
-        ],
-      },
-      {
-        "name": "DeepMimic+++++",
-        "type": "python",
-        "request": "launch",
-        "program": "skillmimic/run.py",
-        "console": "integratedTerminal",
-        "justMyCode": false, 
-        "args": ["--task", "DeepMimic2BallPlayHist", 
-                // "--num_envs", "8", "--minibatch_size", "64",
-                // "--num_envs", "4096", "--minibatch_size", "32768",
-                // "--num_envs", "3072", "--minibatch_size", "24576",
-                // "--num_envs", "2048", "--minibatch_size", "16384",
-                "--num_envs", "256", "--minibatch_size", "2048",
-                "--episode_length", "60",
-                // "--state_init", "41",
-                "--cfg_env", "skillmimic/data/cfg/deepmimic.yaml", 
-                "--cfg_train", "skillmimic/data/cfg/train/rlg/skillmimic.yaml",
-                "--motion_file", //Need to change
-                  "skillmimic/data/motions/CVPR_experiment/exp3",
-                // "--headless",
-
-                // "--reweight", "--reweight_alpha", "1.0",
-                // "--disable_time_reweight",
-                // "--state_switch_prob", "0.1",
-                "--state_init_random_prob", "0.1",
-                // "--state_search_to_align_reward",
-                // "--graph_file",
-                //   "skillmimic/data/preprocess/exp3.pkl",
-                // "--enable_buffernode", 
-                // "--hist_length", "60",
-                // "--history_embedding_size", "3",
-                // "--hist_ckpt",
-                //   "output/tb_logs/ComprehensiveR-Unified-60-woNoise-exp3/checkpoints/epoch=787-train_loss=0.000180.ckpt",
-                  // "tb_logs/ComprehensiveR-60-woNoise-exp3/checkpoints/epoch=983-train_loss=0.000275.ckpt",
-
-                // "--resume_from", 
-                  // "~/Desktop/SkillMimic_21-18-27-50/nn/SkillMimic.pth",
-                //   "~/Desktop/SkillMimic_16-09-43-45/nn/SkillMimic.pth",
-                  // "output/SkillMimic_01-10-11-05-34/nn/SkillMimic_e2500.pth",
-
-                // "--rl_device", "cpu",//"cuda:0",
-                // "--sim_device", "cpu",//"cuda:0",
-                // "--pipeline", "cpu",//"gpu",
-
-        ]
-      },
-      {
-        "name": "DeepMimic+++++ Test",
-        "type": "python",
-        "request": "launch",
-        "program": "skillmimic/run.py",
-        "console": "integratedTerminal",
-        "justMyCode": false, 
-        "args": ["--test", "--task", "DeepMimic2BallPlayHist", 
-                "--cfg_env", "skillmimic/data/cfg/skillmimic_test.yaml", 
-                "--cfg_train", "skillmimic/data/cfg/train/rlg/skillmimic.yaml",
-                "--motion_file", //Need to change
-                  // "skillmimic/data/motions/CVPR_experiment/exp3",
-                  "skillmimic/data/motions/CVPR_experiment/exp3/getup",
-                  // "skillmimic/data/motions/CVPR_experiment/exp3/run_no_object",
-                  // "skillmimic/data/motions/CVPR_experiment/exp3/run_no_object/010_008pickle_runOffBall_004.pt",
-                  // "skillmimic/data/motions/CVPR_experiment/exp3/run_no_object/010_022pickle_runOffBall_002.pt",
-                "--headless",
-
-                // "--reweight", "--reweight_alpha", "1.0",
-                // "--state_switch_prob", "0.1",
-                // "--state_init_random_prob", "1.0",
-                // "--state_search_to_align_reward",
-                // "--graph_file",
-                //   "skillmimic/data/preprocess/exp3.pkl",
-                "--hist_length", "60",
-                "--history_embedding_size", "3",
-                "--hist_ckpt", 
-                  "output/tb_logs/ComprehensiveR-Unified-60-woNoise-exp3/checkpoints/epoch=787-train_loss=0.000180.ckpt",
-                  // "tb_logs/ComprehensiveR-60-woNoise-exp3/checkpoints/epoch=983-train_loss=0.000275.ckpt",
-                  // "output/tb_logs/comprehensive_model/exp3_60_local_noisy/checkpoints/epoch=999-step=17000.ckpt",
-
-                "--num_envs", "1000",
-                "--state_init", "random",
-                "--episode_length", "600",
-                // "--NR",
-                // "--enable_buffernode", 
-
-                "--checkpoint",
-                "output/SkillMimic_01-23-08-10-29/nn/SkillMimic_e5700.pth",
-                // "~/Desktop/SkillMimic_17-21-53-24/nn/SkillMimic_e20000.pth",
-                  // "~/Desktop/SkillMimic_12-17-21-49-51/nn/SkillMimic_e18397_r123.1945.pth",
-
-                "--switch_motion_file",
-                // "skillmimic/data/motions/CVPR_experiment/exp3/getup",
-                "skillmimic/data/motions/CVPR_experiment/exp3/run_no_object",
-                // "--save_images",
-        ]
-      },
-      {
-        "name": "LLC TestSucc +Phase",
-        "type": "python",
-        "request": "launch",
-        "program": "skillmimic/run.py",
-        "console": "integratedTerminal",
-        "justMyCode": false, 
-        "args": ["--task", "SkillMimicBallPlayLocalHistPhase",
-          "--test",
-          "--cfg_env", "skillmimic/data/cfg/skillmimic_hist_test.yaml",
-          "--cfg_train", "skillmimic/data/cfg/train/rlg/skillmimic.yaml",
-          "--motion_file", 
-          // "skillmimic/data/motions/Sigraph_experiment/ablation3/turnlayup",
-          "skillmimic/data/motions/Sigraph_experiment/ablation3/Chestpass",
-          // "skillmimic/data/motions/Sigraph_experiment/ablation3/Jumpshot",
-          // "skillmimic/data/motions/Sigraph_experiment/ablation3/Setshot",
-          "--hist_length", "60",
-          "--hist_ckpt", "",
-          "--num_envs", "100", 
-          "--episode_length", "250",
-          "--state_init", "2",
-          "--checkpoint", 
-          // "~/Desktop/SkillMimic_11-02-35-25/nn/SkillMimic_e10000.pth",//relative
-          "~/Desktop/SkillMimic_11-02-33-24/nn/SkillMimic_e10000.pth",//absolute
-          // "~/Desktop/SkillMimic_01-11-02-30-15/nn/SkillMimic_e5000.pth", //relative
-          // "~/Desktop/SkillMimic_01-11-02-13-52/nn/SkillMimic_e5000.pth", //absolute
-          // "--headless"
-        ],
-      },
-      {
-        "name": "LLC TestSucc +Objhist",
-        "type": "python",
-        "request": "launch",
-        "program": "skillmimic/run.py",
-        "console": "integratedTerminal",
-        "justMyCode": false, 
-        "args": ["--task", "SkillMimicBallPlayLocalHistObjhist", "--test",
-        "--cfg_env", "skillmimic/data/cfg/skillmimic_hist_test.yaml", 
-        "--cfg_train", "skillmimic/data/cfg/train/rlg/skillmimic.yaml",
-        "--motion_file", 
-          "skillmimic/data/motions/Sigraph_experiment/ablation3/turnlayup",
-          // "skillmimic/data/motions/Sigraph_experiment/ablation3/Chestpass",
-          // "skillmimic/data/motions/Sigraph_experiment/ablation3/Jumpshot",
-          // "skillmimic/data/motions/Sigraph_experiment/ablation3/Setshot",
-        "--hist_length", "60",
-        "--hist_ckpt", "",
-        "--num_envs", "100", 
-        "--episode_length", "300",
-        "--state_init", "2",
-        "--checkpoint", 
-        "~/Desktop/SkillMimic_11-02-36-31/nn/SkillMimic_e10000.pth",
-        // "~/Desktop/SkillMimic_01-11-02-31-25/nn/SkillMimic_e5000.pth",
-        // "--headless",
-        ]
-      },
-      {
-        "name": "SkillMimic1 + ATS",
-        "type": "python",
-        "request": "launch",
-        "program": "skillmimic/run.py",
-        "console": "integratedTerminal",
-        "justMyCode": false, 
-        "args": ["--task", "SkillMimic2BallPlayHist", 
-                "--num_envs", "2048", "--minibatch_size", "16384",
-
-                "--episode_length", "60",
-                // "--state_init", "2",
-                "--cfg_env", "skillmimic/data/cfg/skillmimic.yaml", 
-                "--cfg_train", "skillmimic/data/cfg/train/rlg/skillmimic.yaml",
-                "--motion_file", //Need to change 
-                  "skillmimic/data/motions/CVPR_experiment/exp1_planb/shot",
-
-                "--headless",
-
-                "--reweight", "--reweight_alpha", "1.0",
-
-
-        ]
-      },
-      {
-        "name": "Testing SkillMimic 2 envs 2 llcs",
-        "type": "python",
-        "request": "launch",
-        "program": "skillmimic/run.py",
-        "console": "integratedTerminal",
-        "args": [
-            "--test",
-            "--task", "HRLVirtual",
-            "--projtype", "Mouse",
-            "--num_envs", "2",
-            "--episode_length", "600",
-            "--cfg_env", "skillmimic/data/cfg/skillmimic_test.yaml",
-            "--cfg_train", "skillmimic/data/cfg/train/rlg/hrl_humanoid_virtual.yaml",
-            "--motion_file", "skillmimic/data/motions/CVPR_experiment/exp1_planb/rrun", 
-            "--llc_checkpoint", "models/camready/playball/SkillMimic_e20000.pth",
-            "--checkpoint", "models/camready/PhysHOI_04-23-16-39-54/nn/PhysHOI.pth",
-            "--hist_length", "60",
+          "args": [
+              "--test",
+              "--task", "HRLVirtual",
+              "--projtype", "Mouse",
+              "--num_envs", "6",
+              "--episode_length", "2000",
+              "--cfg_env", "skillmimic/data/cfg/skillmimic_test.yaml",
+              "--cfg_train", "skillmimic/data/cfg/train/rlg/hrl_humanoid_virtual.yaml",
+              "--motion_file", "skillmimic/data/motions/BallPlay/run", 
+              "--llc_checkpoint", "models/BallPlay/SkillMimic-V2/model.pth",
+              "--checkpoint", "models/Matchup/model.pth",
+              "--hist_length", "60",
               "--history_embedding_size", "3",
               "--hist_ckpt",
-              "output/tb_logs/comprehensive_model/exp1_planb/checkpoints/epoch=999-step=4000.ckpt",
-            // "--save_images",
-            // "--headless"
-        ],
-        "justMyCode": false,
-        "env": {
-            "CUDA_LAUNCH_BLOCKING":"1"
-        }
-    },
+              "hist_encoder/BallPlay/hist_model.ckpt",
+              // "--save_images",
+              // "--headless"
+          ],
+          "justMyCode": false,
+          "env": {
+              "DISABLE_METRICS":"1"
+          }
+      },
 
     ],
 }

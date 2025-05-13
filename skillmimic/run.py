@@ -42,11 +42,11 @@ import numpy as np
 import copy
 import torch
 
-from learning import skillmimic_agent, skillmimic_agent_regloss
+from learning import skillmimic_agent #, skillmimic_agent_regloss
 from learning import skillmimic_players
-from learning import skillmimic_models, skillmimic_models_objhist_reduce
-from learning import skillmimic_network_builder, skillmimic_network_builder_hist_reduce, skillmimic_network_builder_dropout, skillmimic_network_builder_histGate
-from learning import skillmimic_network_builder_objhist_reduce
+from learning import skillmimic_models #, skillmimic_models_objhist_reduce
+from learning import skillmimic_network_builder #, skillmimic_network_builder_hist_reduce, skillmimic_network_builder_dropout, skillmimic_network_builder_histGate
+# from learning import skillmimic_network_builder_objhist_reduce
 # from learning import physhoi_network_builder_dual #ZC9 #V1
 
 from learning import hrl_agent_discrete #, hrl_agent, #ZC0
@@ -191,15 +191,15 @@ def build_alg_runner(algo_observer):
     runner = Runner(algo_observer)
 
     runner.algo_factory.register_builder('skillmimic', lambda **kwargs : skillmimic_agent.SkillMimicAgent(**kwargs))
-    runner.algo_factory.register_builder('skillmimic_regloss', lambda **kwargs : skillmimic_agent_regloss.SkillMimicAgent(**kwargs))
+    # runner.algo_factory.register_builder('skillmimic_regloss', lambda **kwargs : skillmimic_agent_regloss.SkillMimicAgent(**kwargs))
     runner.player_factory.register_builder('skillmimic', lambda **kwargs : skillmimic_players.SkillMimicPlayerContinuous(**kwargs))
-    runner.player_factory.register_builder('skillmimic_regloss', lambda **kwargs : skillmimic_players.SkillMimicPlayerContinuous(**kwargs))
+    # runner.player_factory.register_builder('skillmimic_regloss', lambda **kwargs : skillmimic_players.SkillMimicPlayerContinuous(**kwargs))
     runner.model_builder.model_factory.register_builder('skillmimic', lambda network, **kwargs : skillmimic_models.SkillMimicModelContinuous(network)) 
-    runner.model_builder.model_factory.register_builder('skillmimic_objhist_reduce', lambda network, **kwargs : skillmimic_models_objhist_reduce.SkillMimicModelContinuous(network)) 
+    # runner.model_builder.model_factory.register_builder('skillmimic_objhist_reduce', lambda network, **kwargs : skillmimic_models_objhist_reduce.SkillMimicModelContinuous(network)) 
     runner.model_builder.network_factory.register_builder('skillmimic', lambda **kwargs : skillmimic_network_builder.SkillMimicBuilder())
-    runner.model_builder.network_factory.register_builder('skillmimic_hist_reduce', lambda **kwargs : skillmimic_network_builder_hist_reduce.SkillMimicBuilderHistReduce())
-    runner.model_builder.network_factory.register_builder('skillmimic_objhist_reduce', lambda **kwargs : skillmimic_network_builder_objhist_reduce.SkillMimicBuilder())
-    runner.model_builder.network_factory.register_builder('skillmimic_hist_GateFuse', lambda **kwargs : skillmimic_network_builder_histGate.SkillMimicBuilder())
+    # runner.model_builder.network_factory.register_builder('skillmimic_hist_reduce', lambda **kwargs : skillmimic_network_builder_hist_reduce.SkillMimicBuilderHistReduce())
+    # runner.model_builder.network_factory.register_builder('skillmimic_objhist_reduce', lambda **kwargs : skillmimic_network_builder_objhist_reduce.SkillMimicBuilder())
+    # runner.model_builder.network_factory.register_builder('skillmimic_hist_GateFuse', lambda **kwargs : skillmimic_network_builder_histGate.SkillMimicBuilder())
     # runner.model_builder.network_factory.register_builder('physhoi_dual', lambda **kwargs : physhoi_network_builder_dual.PhysHOIBuilderDual()) #ZC9 #V1
 
     # runner.algo_factory.register_builder('hrl', lambda **kwargs : hrl_agent.HRLAgent(**kwargs)) #ZC0

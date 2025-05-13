@@ -47,26 +47,21 @@ class SkillMimicPlayerContinuous(common_player.CommonPlayer):
         
         super().__init__(config)
 
-        # #ZC9
-        # if config.get('dual', False):
-        #     print("-----------Dual Policy-----------")
+        ######### Modified by Qihan @ 241125 #########
+        self.metric_manager = None
+        if os.environ.get('DISABLE_METRICS', '0') != '1':
+            metric_kwargs = {}
+            if hasattr(self.env.task, 'layup_target'):
+                metric_kwargs.update({"layup_target":self.env.task.layup_target})  # If extra parameters are needed, they can be obtained from cfg
+            if hasattr(self.env.task, 'switch_skill_name'):
+                metric_kwargs.update({"switch_skill_name":self.env.task.switch_skill_name})  # If extra parameters are needed, they can be obtained from cfg
+            metric = create_metric(self.env.task.skill_name, self.env.task.num_envs, self.env.task.device, **metric_kwargs) # Use factory function to create Metric
+            # Initialize Metric manager
+            if metric:
+                self.metric_manager = MetricManager([metric])
 
-        # ######### Modified by Qihan @ 241125 #########
-        # metric_kwargs = {}
-        # if hasattr(self.env.task, 'layup_target'):
-        #     metric_kwargs.update({"layup_target":self.env.task.layup_target})  # 如果需要额外的参数，可以从 cfg 中获取
-        # if hasattr(self.env.task, 'switch_skill_name'):
-        #     metric_kwargs.update({"switch_skill_name":self.env.task.switch_skill_name})  # 如果需要额外的参数，可以从 cfg 中获取
-        # metric = create_metric(self.env.task.skill_name, self.env.task.num_envs, self.env.task.device, **metric_kwargs) # 使用工厂函数创建 Metric
-        # # 初始化 Metric 管理器
-        # if metric:
-        #     self.metric_manager = MetricManager([metric])
-        # else:
-        #     self.metric_manager = None
-        # #########
-
-        # global NR
-        # NR = self.env.task.cfg["env"]["NR"]
+            global NR
+            NR = self.env.task.cfg["env"]["NR"]
 
         return
 
@@ -211,11 +206,11 @@ class SkillMimicPlayerContinuous(common_player.CommonPlayer):
                         done_steps_i = steps[done_indices.squeeze(-1).long()].long()
                         done_steps_i = torch.clamp(done_steps_i, 0, self.env.task.max_episode_length)
 
-                        # 算出本批 done_steps 的分布 [0..max_episode_length]
+                        # Calculate the distribution of done_steps in this batch [0..max_episode_length]
                         freq = torch.bincount(
                             done_steps_i,
                             minlength = self.env.task.max_episode_length + 1
-                        )# freq 是 1D 张量，freq[k] 表示 "k 步长 episode" 的出现次数
+                        )# freq is a 1D tensor, freq[k] means the number of episodes with k steps
                         dist_step_local += freq.to(dist_step_local.device)
                         dist_step_global += freq.to(dist_step_global.device)
                         
@@ -284,7 +279,7 @@ class SkillMimicPlayerContinuous(common_player.CommonPlayer):
                         sum_succ = 0
 
                 ######### Modified by Qihan @ 241125 #########
-                # 在模拟结束时计算并输出 Metric
+                # Calculate and output Metric at the end of simulation
                 if self.metric_manager:
                     results = self.metric_manager.compute()
                     for metric_name, value in results.items():

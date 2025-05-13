@@ -133,21 +133,6 @@ class HumanoidWholeBody(BaseTask):
             self._num_actions = (52)*3
             obj_obs_size = 15
             self._num_obs = 1 + (53) * (3 + 6 + 3 + 3) - 3 + 10*3
-        elif (asset_file == "mjcf/mocap_humanoid_refobj.xml"):
-            self._dof_obs_size = (52)*3
-            self._num_actions = (52)*3
-            obj_obs_size = 15
-            self._num_obs = 1 + (53) * (3 + 6 + 3 + 3) - 3 + 10*3 + 10 # ref obj
-        elif (asset_file == "mjcf/mocap_humanoid_hist.xml"):
-            self._dof_obs_size = (52)*3
-            self._num_actions = (52)*3
-            obj_obs_size = 15
-            self._num_obs = 1 + (53) * (3 + 6 + 3 + 3) - 3 + 10*3 + 3 # hist vector
-        elif (asset_file == "mjcf/mocap_humanoid_hist64.xml"):
-            self._dof_obs_size = (52)*3
-            self._num_actions = (52)*3
-            obj_obs_size = 15
-            self._num_obs = 1 + (53) * (3 + 6 + 3 + 3) - 3 + 10*3 + 64 # ref obj
         ######### parahome #########
         elif (asset_file in ["mjcf/mocap_parahome_boxhand.xml", "mjcf/mocap_parahome_boxhand_s22.xml"]):
             self._dof_obs_size = (60)*3

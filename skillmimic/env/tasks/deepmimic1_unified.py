@@ -10,6 +10,7 @@ from isaacgym.torch_utils import *
 import torch.nn.functional as F
 
 from env.tasks.skillmimic1_unified import SkillMimic1BallPlayUnified
+# from env.tasks.skillmimic2_unified import SkillMimic2BallPlayUnified
 
 class DeepMimic1BallPlayUnified(SkillMimic1BallPlayUnified): 
     def __init__(self, cfg, sim_params, physics_engine, device_type, device_id, headless):

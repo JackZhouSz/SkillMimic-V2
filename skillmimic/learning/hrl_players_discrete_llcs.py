@@ -64,7 +64,7 @@ class HRLPlayerDiscreteLLCs(common_player_discrete.CommonPlayerDiscrete):
         self._llc_agents = []
         self._build_llc(llc_config_params, llc_checkpoint)
         for i in range(5):
-            self._build_llc(llc_config_params, "models/camready/locomotion/SkillMimic.pth")
+            self._build_llc(llc_config_params, "models/Locomotion/model.pth")
 
         return
     
@@ -297,29 +297,29 @@ class HRLPlayerDiscreteLLCs(common_player_discrete.CommonPlayerDiscrete):
         return
 
     def _compute_llc_action(self, obs, actions):
-        # 假设 obs 和 actions 的第 0 维是 env_id
+        # Assume the 0th dimension of obs and actions is env_id
         batch_size = obs.shape[0]
         llc_actions = []
         for i in range(batch_size):
-            obs_i = obs[i : i+1] # 取出对应 env 的 data
+            obs_i = obs[i : i+1] # Extract the data for the corresponding env
 
-            # 选择对应的 lowlevel controller
-            agent = self._llc_agents[i]   # i==0 用 agent0，i==1 用 agent1
+            # Select the corresponding lowlevel controller
+            agent = self._llc_agents[i]   # i==0 uses agent0, i==1 uses agent1
 
-            llc_obs_i = self._extract_llc_obs(obs_i) # 构造 llc 的 observation
+            llc_obs_i = self._extract_llc_obs(obs_i) # Construct llc observation
             processed_obs = agent._preproc_obs(llc_obs_i)
 
-            # 网络前向得到 mu
+            # Forward pass to get mu
             mu, _ = agent.model.a2c_network.eval_actor(obs=processed_obs)
 
-            # 反归一化到实际 action 空间
+            # Denormalize to the actual action space
             out_i = players.rescale_actions(
                 # torch.full_like(self.actions_low, -1.56), torch.full_like(self.actions_high, +1.56),
                 self.actions_low, self.actions_high,
                 torch.clamp(mu, -1.0, 1.0))
             llc_actions.append(out_i)
 
-        # 把两个 env 的 action 再 concat 回去
+        # Concatenate the actions of the two envs back together
         return torch.cat(llc_actions, dim=0)
 
     def _extract_llc_obs(self, obs):

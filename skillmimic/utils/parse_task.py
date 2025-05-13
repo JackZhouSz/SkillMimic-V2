@@ -50,6 +50,7 @@ from env.tasks.skillmimic1_unified import SkillMimic1BallPlayUnified
 from env.tasks.skillmimic1_rand import SkillMimic1BallPlayRand
 from env.tasks.skillmimic1_hist import SkillMimic1BallPlayHist
 from env.tasks.skillmimic1_reweight import SkillMimic1BallPlayReweight
+from env.tasks.skillmimic2 import SkillMimic2BallPlay
 
 
 from env.tasks.deepmimic1 import DeepMimic1BallPlay
