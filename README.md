@@ -239,5 +239,5 @@ If you find this repository useful for your research, please cite the following 
     }
 ```
 
-## Acknowledgements 👏
+# Acknowledgements 👏
 The household manipulation dataset used in this work is derived from [Parahome](https://github.com/snuvclab/ParaHome). If you utilize the processed motion data from our work in your research, please ensure proper citation of the original ParaHome publication.
