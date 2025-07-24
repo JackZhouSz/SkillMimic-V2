@@ -78,12 +78,12 @@ python skillmimic/run.py \
   --motion_file skillmimic/data/motions/BallPlay \
   --state_init 2 \
   --episode_length 600 \
-  --checkpoint models/ballplay/SkillMimic-V2/model.pth
+  --checkpoint models/BallPlay/SkillMimic-V2/model.pth
 ```
 - If `--switch_motion_file {A}` is added, the policy will switch from skill `A` to skill `B` specified by `--motion_file {B}`
 - You may control the skill switching using your keyboard. By default, the key and skill correspondence are as follows:
 `←: dribble left`, `↑: dribble forward`, `→: dribble right`, `W: shoot`, `E: layup`.
-- To save the images, add `--save_image` to the command, and the images will be saved in `skillmimic/data/images/{timestamp}`.
+- To save the images, add `--save_images` to the command, and the images will be saved in `skillmimic/data/images/{timestamp}`.
 - To transform the images into a video, run the following command, and the video can be found in `skillmimic/data/videos`.
 ```
 python skillmimic/utils/make_video.py --image_path skillmimic/data/images/{timestamp} --fps 60
